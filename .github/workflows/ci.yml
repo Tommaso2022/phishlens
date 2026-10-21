@@ -1,0 +1,132 @@
+# Pipeline CI di PhishLens.
+#
+# Regole di sicurezza applicate a questo file:
+#  - ogni Action esterna è fissata all'hash del commit, non al tag: i tag si
+#    possono spostare (è successo a trivy-action nel marzo 2026);
+#  - il token di GitHub ha solo permesso di lettura;
+#  - nessun segreto è usato, quindi un'Action compromessa non ha niente da rubare
+#    oltre al codice, che è già nel repository;
+#  - il trigger è pull_request, mai pull_request_target.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_VERSION: "0.13.4"
+  GITLEAKS_VERSION: "8.30.0"
+  TRIVY_VERSION: "v0.76.1"
+
+jobs:
+  checks:
+    name: Test e pre-commit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Installa le dipendenze dal lock file (verifica degli hash)
+        run: uv sync --frozen --all-packages
+
+      - name: Test
+        run: uv run pytest -q
+
+      - name: Pre-commit su tutti i file
+        # gitleaks gira nel job dedicato, sull'intera storia del repository.
+        env:
+          SKIP: gitleaks-system
+        run: uvx pre-commit run --all-files --show-diff-on-failure
+
+  secrets:
+    name: Segreti nella storia (gitleaks)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Installa gitleaks verificando il checksum
+        run: |
+          V="$GITLEAKS_VERSION"
+          base="https://github.com/gitleaks/gitleaks/releases/download/v$V"
+          curl -sSfLO "$base/gitleaks_${V}_linux_x64.tar.gz"
+          curl -sSfLO "$base/gitleaks_${V}_checksums.txt"
+          grep "linux_x64.tar.gz" "gitleaks_${V}_checksums.txt" | sha256sum -c -
+          tar xzf "gitleaks_${V}_linux_x64.tar.gz" gitleaks
+
+      - name: Scansione di tutti i commit
+        run: ./gitleaks git --redact --verbose .
+
+  dependencies:
+    name: Vulnerabilità delle dipendenze (pip-audit)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Esporta le dipendenze bloccate
+        run: uv export --frozen --all-packages --no-emit-workspace -o requirements-audit.txt
+
+      - name: pip-audit
+        run: uvx pip-audit -r requirements-audit.txt --require-hashes --disable-pip --progress-spinner off
+
+  images:
+    name: Immagine ${{ matrix.service }} (build e Trivy)
+    needs: checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [backend, worker, fetcher]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build
+        run: >
+          docker build
+          --build-arg SERVICE=${{ matrix.service }}
+          --build-arg UV_VERSION=${{ env.UV_VERSION }}
+          -t phishlens/${{ matrix.service }}:ci .
+
+      - name: Utente non root nell'immagine
+        run: |
+          user=$(docker image inspect -f '{{.Config.User}}' phishlens/${{ matrix.service }}:ci)
+          echo "Utente: $user"
+          case "$user" in ""|0|0:*|root|root:*) echo "L'immagine gira come root"; exit 1;; esac
+
+      - name: Scansione con Trivy
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: ${{ env.TRIVY_VERSION }}
+          image-ref: phishlens/${{ matrix.service }}:ci
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
