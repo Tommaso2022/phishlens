@@ -12,7 +12,17 @@ PhishLens è una web app che analizza URL ed email sospette e restituisce uno sc
 L'app è uno strumento di supporto alla decisione: i verdetti sono probabilistici e non garantiscono che un URL sia sicuro.
 
 ## 2. Use case
-<!-- La tabella UC1–UC7 con i criteri di accettazione. -->
+## 2. Use case
+
+| ID | User story | Criteri di accettazione |
+| --- | --- | --- |
+| UC1 | Come utente voglio inviare un URL e ricevere uno score 0–100, per capire se aprirlo | Risposta entro 15 s oppure stato "in elaborazione"; URL oltre 2048 caratteri o con schema diverso da http/https rifiutati con messaggio chiaro; URL mostrato in forma defanged |
+| UC2 | Come utente voglio vedere perché un URL è rischioso, per decidere con cognizione | Le 5 cause principali (SHAP) in linguaggio naturale; segnali delle API esterne mostrati separati dal verdetto del modello |
+| UC3 | Come utente voglio un giudizio chiaro, per sapere cosa fare | Tre livelli: "nessun segnale di rischio rilevato", "sospetto", "alto rischio"; avviso sui limiti dell'analisi; mai la parola "affidabile" |
+| UC4 | Come utente voglio sapere se un dominio compare in blocklist pubbliche, per verificarne la reputazione | Esito per ogni fonte, con data dell'ultimo aggiornamento; controllo solo passivo, nessuna connessione al dominio |
+| UC5 | Come utente voglio confrontare un'analisi con le mie precedenti sullo stesso URL, per vedere cosa è cambiato | Solo storico personale; variazione dello score e delle cause; storico limitato al periodo di retention |
+| UC6 | Come utente voglio gestire il mio account, per proteggerlo e controllare i miei dati | Registrazione con verifica email, MFA TOTP, esportazione e cancellazione completa dei dati |
+| UC7 | Come utente voglio analizzare un'email `.eml` (estensione dopo l'MVP) | Limiti su dimensione e struttura; corpo cancellato dopo l'analisi; allegati trattati solo come hash |
 
 ## 3. Asset da proteggere
 
@@ -143,7 +153,22 @@ flowchart LR
 | R-03 | Repudiation | F11, Audit log | Chi ha accesso al database può alterare l'audit log | Copia dei log su file append-only o servizio esterno | — | V16 | Verifica della copia dei log |
 
 ## 8. Abuse case
-<!-- La tabella AC1–AC12, collegata alle righe STRIDE. -->
+## 8. Abuse case
+
+| ID | Attaccante e obiettivo | Come ci prova | Difesa | Righe STRIDE |
+| --- | --- | --- | --- | --- |
+| AC1 | Utente che vuole uso illimitato | Supera la quota o crea molti account | Quota per account, verifica email, limite di registrazioni per IP | D-01, D-03, D-05, S-04 |
+| AC2 | Chi vuole esaurire le quote API | Invia in massa URL sempre diversi | Cache, budget giornaliero per servizio, analisi parziale oltre il budget | D-01, I-06, D-04 |
+| AC3 | Chi vuole attaccare l'analizzatore con l'input | XSS nell'URL o nel titolo della pagina, URL enormi o malformati, trucchi punycode | Validazione strict, escaping, URL defanged, normalizzazione IDNA | E-01, T-02, D-02, T-04, E-03 |
+| AC4 | Chi vuole avvelenare il modello | Inserisce dati costruiti nei feed usati per il riaddestramento | Deduplica, test set fisso verificato a mano, gate di rilascio | T-09 |
+| AC5 | Phisher che vuole eludere il modello | Modifica l'URL quanto basta per abbassare lo score | Valutazione adversarial, segnali esterni indipendenti dal modello | T-10 |
+| AC6 | Chi vuole manomettere il modello o la coda | Sostituisce il file del modello o inserisce job malevoli | Formato JSON, hash verificato, sola lettura; coda solo con ID | T-08, T-06 |
+| AC7 | Chi vuole scansionare la rete interna (SSRF) | URL verso IP privati, metadata cloud, redirect o DNS rebinding | Fetcher isolato, verifica degli IP, IP pinning, redirect rivalidati | E-02, S-05 |
+| AC8 | Chi vuole usare l'app come proxy verso terzi | Invia in massa URL dello stesso sito bersaglio | Solo GET senza header o corpo scelti dall'utente, limite per dominio di destinazione, log delle richieste | R-02 |
+| AC9 | Phisher che usa l'app come oracolo | Prova varianti della propria pagina finché lo score scende | Rate limit, spiegazioni dettagliate solo agli autenticati, alert su molte varianti dello stesso dominio | I-08 |
+| AC10 | Chi vuole prendere il controllo di un account | Credential stuffing, furto della sessione | Argon2id, rate limit sul login, MFA, controllo password violate | S-01 |
+| AC11 | Utente che vuole leggere analisi altrui | Cambia l'ID nella richiesta (IDOR) | Controllo di proprietà centralizzato | I-02 |
+| AC12 | Chi vuole bloccare il servizio con email ostili | File `.eml` enormi, annidati, zip bomb negli allegati | Limiti prima del parsing, allegati solo come hash, parsing nel worker | E-03, D-06 |
 
 ## 9. Rischi residui accettati
 - **R1.** Il worker ha accesso a Internet per chiamare le API esterne. Mitigazione prevista: limitare le connessioni in uscita ai soli domini delle API.
