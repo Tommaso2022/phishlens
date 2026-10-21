@@ -149,8 +149,8 @@ flowchart LR
 | S-05 | Spoofing | F7, Fetcher | Un processo diverso dal worker invia richieste al fetcher | Il fetcher accetta richieste solo dalla sua rete dedicata e con un token condiviso | AC7 | V13 | `test_fetcher_rejects_without_token` |
 | T-07 | Tampering | F10 | Blocklist manipolata (fonte compromessa o man-in-the-middle) che altera i verdetti | TLS, controllo di formato e dimensione, nuova versione scartata se cambia in modo anomalo | — | V12 | `test_blocklist_validation` |
 | T-08 | Tampering | File del modello | Sostituzione del modello con uno manomesso | Formato JSON nativo, hash SHA-256 verificato all'avvio, montaggio in sola lettura | AC6 | V15 | `test_model_hash_mismatch` |
-| T-09 | Tampering | Dati di addestramento | Data poisoning tramite feed pubblici | Deduplica, test set fisso verificato a mano, gate di rilascio | AC4 | — | Gate di rilascio in pipeline |
-| T-10 | Tampering | Modello | Evasione: URL costruito per abbassare lo score | Test adversarial, segnali esterni indipendenti dal modello | AC5 | — | Report adversarial nella model card |
+| T-09 | Tampering | Dati di addestramento | Data poisoning tramite feed pubblici | Deduplica, test set fisso verificato a mano, gate di rilascio | AC4 | Fuori da ASVS (ML) | Gate di rilascio in pipeline |
+| T-10 | Tampering | Modello | Evasione: URL costruito per abbassare lo score | Test adversarial, segnali esterni indipendenti dal modello | AC5 | Fuori da ASVS (ML) | Report adversarial nella model card |
 | I-08 | Information disclosure | Backend | Un phisher usa score e spiegazioni come oracolo per capire come eludere il modello | Rate limit, spiegazioni dettagliate solo agli utenti autenticati, alert su molte varianti dello stesso dominio | AC9 | V2 | `test_variant_alert` |
 | S-06 | Spoofing | F11 | Furto della chiave SSH dell'amministratore | Chiave con passphrase, login root disattivato, fail2ban, accesso SSH limitato | — | V13 | Verifica della configurazione SSH |
 | R-03 | Repudiation | F11, Audit log | Chi ha accesso al database può alterare l'audit log | Copia dei log su file append-only o servizio esterno | — | V16 | Verifica della copia dei log |
@@ -163,16 +163,16 @@ flowchart LR
 
 | ID | Attaccante e obiettivo | Come ci prova | Difesa | Righe STRIDE |
 | --- | --- | --- | --- | --- |
-| AC1 | Utente che vuole uso illimitato | Supera la quota o crea molti account | Quota per account, verifica email, limite di registrazioni per IP | D-01, D-03, D-05, S-04 |
+| AC1 | Utente che vuole uso illimitato | Supera la quota, crea molti account o modifica campi riservati | Quota per account, verifica email, limite di registrazioni per IP, aggiornamenti atomici, `extra="forbid"` | D-01, D-03, D-05, S-04, E-04, T-11 |
 | AC2 | Chi vuole esaurire le quote API | Invia in massa URL sempre diversi | Cache, budget giornaliero per servizio, analisi parziale oltre il budget | D-01, I-06, D-04 |
-| AC3 | Chi vuole attaccare l'analizzatore con l'input | XSS nell'URL o nel titolo della pagina, URL enormi o malformati, trucchi punycode | Validazione strict, escaping, URL defanged, normalizzazione IDNA | E-01, T-02, D-02, T-04, E-03 |
+| AC3 | Chi vuole attaccare l'analizzatore con l'input | XSS nell'URL o nel titolo della pagina, URL enormi o malformati, trucchi punycode, regex lente (ReDoS) | Validazione strict, escaping, URL defanged, normalizzazione IDNA, regex semplici e input limitato | E-01, T-02, D-02, T-04, E-03, D-07 |
 | AC4 | Chi vuole avvelenare il modello | Inserisce dati costruiti nei feed usati per il riaddestramento | Deduplica, test set fisso verificato a mano, gate di rilascio | T-09 |
 | AC5 | Phisher che vuole eludere il modello | Modifica l'URL quanto basta per abbassare lo score | Valutazione adversarial, segnali esterni indipendenti dal modello | T-10 |
 | AC6 | Chi vuole manomettere il modello o la coda | Sostituisce il file del modello o inserisce job malevoli | Formato JSON, hash verificato, sola lettura; coda solo con ID | T-08, T-06 |
-| AC7 | Chi vuole scansionare la rete interna (SSRF) | URL verso IP privati, metadata cloud, redirect o DNS rebinding | Fetcher isolato, verifica degli IP, IP pinning, redirect rivalidati | E-02, S-05 |
+| AC7 | Chi vuole scansionare la rete interna (SSRF) | URL verso IP privati, metadata cloud, redirect, DNS rebinding, differenze tra parser di URL | Fetcher isolato, verifica degli IP, IP pinning, redirect rivalidati, un solo parser di URL | E-02, S-05, E-05 |
 | AC8 | Chi vuole usare l'app come proxy verso terzi | Invia in massa URL dello stesso sito bersaglio | Solo GET senza header o corpo scelti dall'utente, limite per dominio di destinazione, log delle richieste | R-02 |
 | AC9 | Phisher che usa l'app come oracolo | Prova varianti della propria pagina finché lo score scende | Rate limit, spiegazioni dettagliate solo agli autenticati, alert su molte varianti dello stesso dominio | I-08 |
-| AC10 | Chi vuole prendere il controllo di un account | Credential stuffing, furto della sessione | Argon2id, rate limit sul login, MFA, controllo password violate | S-01 |
+| AC10 | Chi vuole prendere il controllo di un account | Credential stuffing, furto della sessione, riuso di codici monouso con richieste parallele | Argon2id, rate limit sul login, MFA, controllo password violate, aggiornamenti atomici | S-01, T-11 |
 | AC11 | Utente che vuole leggere analisi altrui | Cambia l'ID nella richiesta (IDOR) | Controllo di proprietà centralizzato | I-02 |
 | AC12 | Chi vuole bloccare il servizio con email ostili | File `.eml` enormi, annidati, zip bomb negli allegati | Limiti prima del parsing, allegati solo come hash, parsing nel worker | E-03, D-06 |
 

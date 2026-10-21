@@ -113,7 +113,7 @@ Ordine di compilazione consigliato: V8, V6, V7, V1, V2, poi gli altri capitoli.
 | ID | Requisito | Liv. | Applicabile | Implementazione | Verifica | Stato |
 | --- | --- | --- | --- | --- | --- | --- |
 | v5.0.0-2.3.1 | Verify that the application will only process business logic flows for the same user in the expected sequential step order and without skipping steps. | L1 | Sì | Lo stato dei flussi (registrazione, login a due passi, reset) è salvato lato server; ogni passo verifica che il precedente sia completato | `test_cannot_skip_email_verification`, `test_cannot_skip_totp` | Da fare |
-| v5.0.0-2.3.2 | Verify that business logic limits are implemented per the application's documentation to avoid business logic flaws being exploited. | L2 | Sì | Limiti della sezione 3 di `docs/validation.md` applicati nel backend | `test_quota_exceeded`, `test_per_domain_limit` | Da fare |
+| v5.0.0-2.3.2 | Verify that business logic limits are implemented per the application's documentation to avoid business logic flaws being exploited. | L2 | Sì | Limiti della sezione 3 di `docs/validation.md` applicati nel backend | `test_queue_limit_per_user` | Da fare |
 | v5.0.0-2.3.3 | Verify that transactions are being used at the business logic level such that either a business logic operation succeeds in its entirety or it is rolled back to the previous correct state. | L2 | Sì | Transazioni del database per operazioni composte: creazione dell'analisi con consumo della quota, cancellazione dell'account | `test_analysis_creation_atomic` | Da fare |
 | v5.0.0-2.3.4 | Verify that business logic level locking mechanisms are used to ensure that limited quantity resources (such as theater seats or delivery slots) cannot be double-booked by manipulating the application's logic. | L2 | Sì | Operazioni atomiche contro le race condition: consumo della quota con aggiornamento condizionale, codici di recupero e TOTP segnati come usati con `UPDATE ... WHERE` condizionale | `test_quota_race_condition`, `test_recovery_code_race` | Da fare |
 
@@ -121,7 +121,7 @@ Ordine di compilazione consigliato: V8, V6, V7, V1, V2, poi gli altri capitoli.
 
 | ID | Requisito | Liv. | Applicabile | Implementazione | Verifica | Stato |
 | --- | --- | --- | --- | --- | --- | --- |
-| v5.0.0-2.4.1 | Verify that anti-automation controls are in place to protect against excessive calls to application functions that could lead to data exfiltration, garbage-data creation, quota exhaustion, rate-limit breaches, denial-of-service, or overuse of costly resources. | L2 | Sì | Rate limit, quote, budget delle API, limite di registrazioni (`docs/authentication.md` sezione 3, `docs/validation.md` sezione 3) | `test_rate_limits` | Da fare |
+| v5.0.0-2.4.1 | Verify that anti-automation controls are in place to protect against excessive calls to application functions that could lead to data exfiltration, garbage-data creation, quota exhaustion, rate-limit breaches, denial-of-service, or overuse of costly resources. | L2 | Sì | Rate limit, quote, budget delle API, limite di registrazioni (`docs/authentication.md` sezione 3, `docs/validation.md` sezione 3) | `test_variant_alert` | Da fare |
 
 
 ## V3 Web Frontend Security
@@ -363,28 +363,28 @@ Ordine di compilazione consigliato: V8, V6, V7, V1, V2, poi gli altri capitoli.
 
 | ID | Requisito | Liv. | Applicabile | Implementazione | Verifica | Stato |
 | --- | --- | --- | --- | --- | --- | --- |
-| v5.0.0-8.1.1 | Verify that authorization documentation defines rules for restricting function-level and data-specific access based on consumer permissions and resource attributes. | L1 |  |  |  | Da fare |
-| v5.0.0-8.1.2 | Verify that authorization documentation defines rules for field-level access restrictions (both read and write) based on consumer permissions and resource attributes. Note that these rules might depend on other attribute values of the relevant data object, such as state or status. | L2 |  |  |  | Da fare |
+| v5.0.0-8.1.1 | Verify that authorization documentation defines rules for restricting function-level and data-specific access based on consumer permissions and resource attributes. | L1 | Sì | `docs/authorization.md`, tabella "Livello di funzione" e principi | Revisione: ogni endpoint del codice compare nella tabella | Da fare |
+| v5.0.0-8.1.2 | Verify that authorization documentation defines rules for field-level access restrictions (both read and write) based on consumer permissions and resource attributes. Note that these rules might depend on other attribute values of the relevant data object, such as state or status. | L2 | Sì | `docs/authorization.md`, tabella "Livello di campo" | Revisione: ogni campo dei modelli compare nella tabella | Da fare |
 
 ### V8.2 General Authorization Design
 
 | ID | Requisito | Liv. | Applicabile | Implementazione | Verifica | Stato |
 | --- | --- | --- | --- | --- | --- | --- |
-| v5.0.0-8.2.1 | Verify that the application ensures that function-level access is restricted to consumers with explicit permissions. | L1 |  |  |  | Da fare |
-| v5.0.0-8.2.2 | Verify that the application ensures that data-specific access is restricted to consumers with explicit permissions to specific data items to mitigate insecure direct object reference (IDOR) and broken object level authorization (BOLA). | L1 |  |  |  | Da fare |
-| v5.0.0-8.2.3 | Verify that the application ensures that field-level access is restricted to consumers with explicit permissions to specific fields to mitigate broken object property level authorization (BOPLA). | L2 |  |  |  | Da fare |
+| v5.0.0-8.2.1 | Verify that the application ensures that function-level access is restricted to consumers with explicit permissions. | L1 | Sì | Dependency di autenticazione globale; endpoint pubblici in una allowlist esplicita | `test_all_routes_require_auth`: scorre tutte le route e fallisce se una non autenticata manca dall'allowlist | Da fare |
+| v5.0.0-8.2.2 | Verify that the application ensures that data-specific access is restricted to consumers with explicit permissions to specific data items to mitigate insecure direct object reference (IDOR) and broken object level authorization (BOLA). | L1 | Sì | Dependency `get_owned_analysis`; ogni query filtra per `owner_id`; ID come UUID casuali | `test_idor`: l'utente B prova lettura, cancellazione e confronto sulle analisi di A → 404 | Da fare |
+| v5.0.0-8.2.3 | Verify that the application ensures that field-level access is restricted to consumers with explicit permissions to specific fields to mitigate broken object property level authorization (BOPLA). | L2 | Sì | Schemi Pydantic separati per input e output, `extra="forbid"` in input, `response_model` che esclude i campi interni | `test_mass_assignment`, `test_response_no_internal_fields` | Da fare |
 
 ### V8.3 Operation Level Authorization
 
 | ID | Requisito | Liv. | Applicabile | Implementazione | Verifica | Stato |
 | --- | --- | --- | --- | --- | --- | --- |
-| v5.0.0-8.3.1 | Verify that the application enforces authorization rules at a trusted service layer and doesn't rely on controls that an untrusted consumer could manipulate, such as client-side JavaScript. | L1 |  |  |  | Da fare |
+| v5.0.0-8.3.1 | Verify that the application enforces authorization rules at a trusted service layer and doesn't rely on controls that an untrusted consumer could manipulate, such as client-side JavaScript. | L1 | Sì | Controllo di proprietà nel backend; il frontend nasconde solo i pulsanti, non decide nulla | `test_idor` con richieste dirette all'API, senza frontend | Da fare |
 
 ### V8.4 Other Authorization Considerations
 
 | ID | Requisito | Liv. | Applicabile | Implementazione | Verifica | Stato |
 | --- | --- | --- | --- | --- | --- | --- |
-| v5.0.0-8.4.1 | Verify that multi-tenant applications use cross-tenant controls to ensure consumer operations will never affect tenants with which they do not have permissions to interact. | L2 |  |  |  | Da fare |
+| v5.0.0-8.4.1 | Verify that multi-tenant applications use cross-tenant controls to ensure consumer operations will never affect tenants with which they do not have permissions to interact. | L2 | No — applicazione mono-utente, senza organizzazioni o tenant (threat model, sezione 1: account aziendali fuori perimetro) | — | — | Non applicabile |
 
 ## V9 Self-contained Tokens
 
