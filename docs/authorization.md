@@ -18,8 +18,11 @@ Riferimenti: ASVS v5.0.0-8.1.1, 8.1.2 · Threat model: I-02, AC11
 | `POST /auth/password-reset/request`, `/confirm` | Sì | Sì |
 | `POST /auth/logout` | No | Sì |
 | `GET /me`, `PATCH /me` | No | Sì, solo il proprio account |
-| `POST /me/mfa/enable`, `/me/mfa/disable` | No | Sì, con conferma della password |
-| `GET /me/export`, `DELETE /me` | No | Sì, con conferma della password |
+| `POST /me/mfa/enable`, `/me/mfa/disable` | No | Sì, con password e TOTP |
+| `GET /me/export` | No | Sì, con conferma della password |
+| `DELETE /me` | No | Sì, con password e TOTP |
+| `GET /me/sessions` | No | Sì, solo le proprie |
+| `DELETE /me/sessions/{id}` | No | Sì, solo le proprie, con conferma della password |
 | `POST /analyses` | No | Sì, entro la quota |
 | `GET /analyses` | No | Sì, solo le proprie |
 | `GET /analyses/{id}`, `DELETE /analyses/{id}` | No | Sì, solo se proprietario |
