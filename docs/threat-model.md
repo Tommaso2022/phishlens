@@ -151,8 +151,8 @@ flowchart LR
 | I-08 | Information disclosure | Backend | Un phisher usa score e spiegazioni come oracolo per capire come eludere il modello | Rate limit, spiegazioni dettagliate solo agli utenti autenticati, alert su molte varianti dello stesso dominio | AC9 | V2 | `test_variant_alert` |
 | S-06 | Spoofing | F11 | Furto della chiave SSH dell'amministratore | Chiave con passphrase, login root disattivato, fail2ban, accesso SSH limitato | — | V13 | Verifica della configurazione SSH |
 | R-03 | Repudiation | F11, Audit log | Chi ha accesso al database può alterare l'audit log | Copia dei log su file append-only o servizio esterno | — | V16 | Verifica della copia dei log |
+| E-04 | Elevation of privilege | Backend | Mass assignment: l'utente modifica campi riservati (quota, stato account, owner_id) aggiungendoli al JSON | Schemi di input separati con `extra="forbid"`, `owner_id` preso dalla sessione | AC1 | V8 | `test_mass_assignment` |
 
-## 8. Abuse case
 ## 8. Abuse case
 
 | ID | Attaccante e obiettivo | Come ci prova | Difesa | Righe STRIDE |
