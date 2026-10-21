@@ -1,0 +1,24 @@
+[project]
+name = "phishlens"
+version = "0.1.0"
+description = "Analizzatore di phishing con ML spiegabile"
+requires-python = ">=3.12,<3.13"
+dependencies = []
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = [
+    "core",
+    "backend",
+    "worker",
+    "fetcher",
+]
+
+[dependency-groups]
+dev = [
+    "bandit>=1.9.4",
+    "pytest>=9.1.1",
+    "ruff>=0.17.1",
+]
