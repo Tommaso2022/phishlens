@@ -1,0 +1,128 @@
+# PhishLens: ambiente di sviluppo.
+#
+# Reti (docs/threat-model.md, sezione 5):
+#   data            Postgres e Redis. Interna: nessun accesso a Internet.
+#   fetch           Worker -> fetcher. Interna.
+#   edge            Backend: porta pubblicata solo su 127.0.0.1; uscita verso HIBP (F12).
+#   egress-worker   Worker -> API esterne (F9).
+#   egress-fetcher  Fetcher -> siti analizzati (F8). Il fetcher NON è sulla rete "data".
+#
+# Le porte pubblicate sono sempre legate a 127.0.0.1: altrimenti sarebbero
+# raggiungibili da chiunque sulla stessa rete Wi-Fi (threat model, I-04).
+
+name: phishlens
+
+x-hardened: &hardened
+  read_only: true
+  tmpfs:
+    - /tmp
+  cap_drop: [ALL]
+  security_opt:
+    - no-new-privileges:true
+  restart: unless-stopped
+  environment:
+    PHISHLENS_ENV: development
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: phishlens
+      POSTGRES_USER: phishlens
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?manca POSTGRES_PASSWORD nel file .env}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks: [data]
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U phishlens -d phishlens"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command:
+      - redis-server
+      - --requirepass
+      - ${REDIS_PASSWORD:?manca REDIS_PASSWORD nel file .env}
+      - --appendonly
+      - "yes"
+    environment:
+      REDISCLI_AUTH: ${REDIS_PASSWORD}
+    volumes:
+      - redis-data:/data
+    networks: [data]
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    <<: *hardened
+    image: phishlens/backend:dev
+    build:
+      context: .
+      args:
+        SERVICE: backend
+    command: ["uvicorn", "phishlens_backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "127.0.0.1:8000:8000"
+    networks: [data, edge]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  worker:
+    <<: *hardened
+    image: phishlens/worker:dev
+    build:
+      context: .
+      args:
+        SERVICE: worker
+    command: ["python", "-m", "phishlens_worker.main"]
+    networks: [data, fetch, egress-worker]
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  fetcher:
+    <<: *hardened
+    image: phishlens/fetcher:dev
+    build:
+      context: .
+      args:
+        SERVICE: fetcher
+    command: ["uvicorn", "phishlens_fetcher.main:app", "--host", "0.0.0.0", "--port", "8001"]
+    networks: [fetch, egress-fetcher]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+networks:
+  data:
+    internal: true
+  fetch:
+    internal: true
+  edge: {}
+  egress-worker: {}
+  egress-fetcher: {}
+
+volumes:
+  db-data: {}
+  redis-data: {}

@@ -67,7 +67,7 @@ def section(text: str, number: str) -> str:
     m = re.search(rf"^## {re.escape(number)}\.[^\n]*\n", text, re.M)
     if not m:
         return ""
-    rest = text[m.end():]
+    rest = text[m.end() :]
     nxt = re.search(r"^## ", rest, re.M)
     return rest[: nxt.start()] if nxt else rest
 
@@ -76,15 +76,13 @@ def tables(text: str) -> list[list[dict]]:
     """Estrae tutte le tabelle Markdown come liste di dizionari colonna → valore."""
     result, lines, i = [], text.splitlines(), 0
     while i < len(lines) - 1:
-        if lines[i].lstrip().startswith("|") and re.match(
-            r"^\s*\|?\s*:?-{3,}", lines[i + 1]
-        ):
+        if lines[i].lstrip().startswith("|") and re.match(r"^\s*\|?\s*:?-{3,}", lines[i + 1]):
             header = split_row(lines[i])
             rows, j = [], i + 2
             while j < len(lines) and lines[j].lstrip().startswith("|"):
                 cells = split_row(lines[j])
                 cells += [""] * (len(header) - len(cells))
-                rows.append(dict(zip(header, cells)))
+                rows.append(dict(zip(header, cells, strict=False)))
                 j += 1
             result.append(rows)
             i = j
@@ -107,16 +105,19 @@ def ids(cell: str, pattern: str) -> set[str]:
 def check_threat_model(path: Path) -> tuple[set[str], set[str]]:
     text = path.read_text(encoding="utf-8")
 
-    stride = find_table(section(text, "7"),
-                        {"ID", "Mitigazione", "Abuse case", "ASVS", "Test"})
+    stride = find_table(section(text, "7"), {"ID", "Mitigazione", "Abuse case", "ASVS", "Test"})
     abuse = find_table(section(text, "8"), {"ID", "Righe STRIDE"})
     if stride is None:
-        error(f"{path}: tabella STRIDE non trovata nella sezione 7 "
-              "(servono le colonne ID, Mitigazione, Abuse case, ASVS, Test).")
+        error(
+            f"{path}: tabella STRIDE non trovata nella sezione 7 "
+            "(servono le colonne ID, Mitigazione, Abuse case, ASVS, Test)."
+        )
         return set(), set()
     if abuse is None:
-        error(f"{path}: tabella degli abuse case non trovata nella sezione 8 "
-              "(servono le colonne ID e Righe STRIDE).")
+        error(
+            f"{path}: tabella degli abuse case non trovata nella sezione 8 "
+            "(servono le colonne ID e Righe STRIDE)."
+        )
         return set(), set()
 
     stride_ids: dict[str, dict] = {}
@@ -127,8 +128,7 @@ def check_threat_model(path: Path) -> tuple[set[str], set[str]]:
         stride_ids[rid] = row
         for col in ("Mitigazione", "ASVS", "Test"):
             if row[col] in EMPTY:
-                (warn if col == "ASVS" else error)(
-                    f"Riga STRIDE {rid}: colonna '{col}' vuota.")
+                (warn if col == "ASVS" else error)(f"Riga STRIDE {rid}: colonna '{col}' vuota.")
 
     ac_rows = {row["ID"]: row for row in abuse}
     covered_by: dict[str, set[str]] = {ac: set() for ac in ac_rows}
@@ -171,7 +171,7 @@ def check_requirements(path: Path, chapters_used: set[str], tests: set[str]) -> 
         if not m:
             error(f"Capitolo prioritario {ch} assente in {path.name}.")
             continue
-        rest = text[m.end():]
+        rest = text[m.end() :]
         nxt = re.search(r"^## ", rest, re.M)
         body = rest[: nxt.start()] if nxt else rest
         for t in tables(body):
@@ -195,15 +195,15 @@ def check_requirements(path: Path, chapters_used: set[str], tests: set[str]) -> 
 def main() -> None:
     p = argparse.ArgumentParser(description="Controllo incrociato dei documenti di sicurezza.")
     p.add_argument("--threat-model", type=Path, default=Path("docs/threat-model.md"))
-    p.add_argument("--requirements", type=Path,
-                   default=Path("docs/security-requirements.md"))
-    p.add_argument("--strict", action="store_true",
-                   help="tratta anche gli avvisi come errori")
+    p.add_argument("--requirements", type=Path, default=Path("docs/security-requirements.md"))
+    p.add_argument("--strict", action="store_true", help="tratta anche gli avvisi come errori")
     args = p.parse_args()
 
     for f in (args.threat_model, args.requirements):
         if not f.is_file():
-            sys.exit(f"Errore: file {f} non trovato. Lancia lo script dalla cartella del repository.")
+            sys.exit(
+                f"Errore: file {f} non trovato. Lancia lo script dalla cartella del repository."
+            )
 
     chapters, tests = check_threat_model(args.threat_model)
     check_requirements(args.requirements, chapters, tests)

@@ -1,0 +1,48 @@
+exclude: ^docs/asvs/.*\.csv$
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c  # frozen: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+      - id: detect-private-key
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: 2ca41cc1372d1e939a6a879f18cdc19fc1cac1ce  # frozen: v8.30.0
+    hooks:
+      - id: gitleaks-system
+        pass_filenames: false
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: 38bfb07c0c64c304f47eb52090f8288150c77730  # frozen: v0.17.1
+    hooks:
+      - id: ruff-check
+        args: ["--fix"]
+      - id: ruff-format
+
+  - repo: https://github.com/PyCQA/bandit
+    rev: 92ae8b82fb422a639f0ed8d99e96cea769594e08  # frozen: 1.9.4
+    hooks:
+      - id: bandit
+        args: ["-c", "pyproject.toml"]
+        additional_dependencies: ["bandit[toml]"]
+
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: dd409d04a3fa4a50f918dddb3ad3c6d8f46ab2cd  # frozen: 0.13.4
+    hooks:
+      - id: uv-lock
+
+  - repo: local
+    hooks:
+      - id: check-docs
+        name: Controllo incrociato della documentazione
+        entry: uv run --no-sync python scripts/check_docs.py
+        language: system
+        pass_filenames: false
+        files: ^docs/(threat-model|security-requirements)\.md$

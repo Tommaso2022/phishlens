@@ -36,8 +36,13 @@ NOT_APPLICABLE = {
 PRIORITY = ["V8", "V6", "V7", "V1", "V2"]
 
 EXPECTED_COLUMNS = {
-    "chapter_id", "chapter_name", "section_id", "section_name",
-    "req_id", "req_description", "L",
+    "chapter_id",
+    "chapter_name",
+    "section_id",
+    "section_name",
+    "req_id",
+    "req_description",
+    "L",
 }
 
 
@@ -52,7 +57,7 @@ def versioned_id(req_id: str) -> str:
 
 
 def load(csv_path: Path, max_level: int) -> "OrderedDict[str, dict]":
-    chapters: "OrderedDict[str, dict]" = OrderedDict()
+    chapters: OrderedDict[str, dict] = OrderedDict()
     with csv_path.open(newline="", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
         missing = EXPECTED_COLUMNS - set(reader.fieldnames or [])
@@ -72,9 +77,7 @@ def load(csv_path: Path, max_level: int) -> "OrderedDict[str, dict]":
             section = chapter["sections"].setdefault(
                 row["section_id"], {"name": row["section_name"], "reqs": []}
             )
-            section["reqs"].append(
-                (row["req_id"], row["req_description"], level)
-            )
+            section["reqs"].append((row["req_id"], row["req_description"], level))
     return chapters
 
 
@@ -95,8 +98,7 @@ def render(chapters: "OrderedDict[str, dict]", max_level: int) -> str:
         "- **Verifica:** test automatico, controllo di configurazione o revisione manuale.",
         "- **Stato:** `Da fare`, `Implementato`, `Verificato` oppure `Non applicabile`.",
         "",
-        "Ordine di compilazione consigliato: " + ", ".join(PRIORITY)
-        + ", poi gli altri capitoli.",
+        "Ordine di compilazione consigliato: " + ", ".join(PRIORITY) + ", poi gli altri capitoli.",
         "",
         "## Riepilogo",
         "",
@@ -106,7 +108,8 @@ def render(chapters: "OrderedDict[str, dict]", max_level: int) -> str:
     for ch_id, ch in chapters.items():
         count = sum(len(s["reqs"]) for s in ch["sections"].values())
         status = (
-            f"No — {NOT_APPLICABLE[ch_id]}" if ch_id in NOT_APPLICABLE
+            f"No — {NOT_APPLICABLE[ch_id]}"
+            if ch_id in NOT_APPLICABLE
             else "Da valutare requisito per requisito"
         )
         out.append(f"| {ch_id} {cell(ch['name'])} | {count} | {status} |")
@@ -123,8 +126,7 @@ def render(chapters: "OrderedDict[str, dict]", max_level: int) -> str:
             out.append(f"### {sec_id} {sec['name']}")
             out.append("")
             out.append(
-                "| ID | Requisito | Liv. | Applicabile | Implementazione "
-                "| Verifica | Stato |"
+                "| ID | Requisito | Liv. | Applicabile | Implementazione | Verifica | Stato |"
             )
             out.append("| --- | --- | --- | --- | --- | --- | --- |")
             for req_id, desc, level in sec["reqs"]:
@@ -144,7 +146,9 @@ def main() -> None:
     )
     parser.add_argument("csv_path", type=Path)
     parser.add_argument(
-        "-o", "--output", type=Path,
+        "-o",
+        "--output",
+        type=Path,
         default=Path("docs/security-requirements.md"),
     )
     parser.add_argument("--max-level", type=int, default=2, choices=[1, 2, 3])
@@ -153,8 +157,7 @@ def main() -> None:
 
     if not args.csv_path.is_file():
         sys.exit(f"Errore: il file {args.csv_path} non esiste.")
-    if (args.output.exists() and args.output.stat().st_size > 0
-            and not args.force):
+    if args.output.exists() and args.output.stat().st_size > 0 and not args.force:
         sys.exit(
             f"Errore: {args.output} non è vuoto. Usa --force solo se vuoi "
             "davvero sovrascrivere il lavoro già fatto."
@@ -165,16 +168,19 @@ def main() -> None:
         sys.exit("Errore: nessun requisito trovato con i filtri scelti.")
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(render(chapters, args.max_level) + "\n",
-                           encoding="utf-8")
+    args.output.write_text(render(chapters, args.max_level) + "\n", encoding="utf-8")
 
-    total = sum(len(s["reqs"]) for c in chapters.values()
-                for s in c["sections"].values())
-    to_review = sum(len(s["reqs"]) for cid, c in chapters.items()
-                    if cid not in NOT_APPLICABLE
-                    for s in c["sections"].values())
-    print(f"Scritto {args.output}: {total} requisiti, "
-          f"{to_review} da valutare in {len(chapters)} capitoli.")
+    total = sum(len(s["reqs"]) for c in chapters.values() for s in c["sections"].values())
+    to_review = sum(
+        len(s["reqs"])
+        for cid, c in chapters.items()
+        if cid not in NOT_APPLICABLE
+        for s in c["sections"].values()
+    )
+    print(
+        f"Scritto {args.output}: {total} requisiti, "
+        f"{to_review} da valutare in {len(chapters)} capitoli."
+    )
 
 
 if __name__ == "__main__":

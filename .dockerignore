@@ -1,0 +1,13 @@
+# Solo ciò che serve alla build entra nell'immagine.
+.git
+.venv
+**/__pycache__
+**/*.pyc
+.env
+.env.*
+secrets/
+docs/
+tests/
+scripts/
+ml/
+data/
