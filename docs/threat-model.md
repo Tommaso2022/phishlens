@@ -155,6 +155,9 @@ flowchart LR
 | S-06 | Spoofing | F11 | Furto della chiave SSH dell'amministratore | Chiave con passphrase, login root disattivato, fail2ban, accesso SSH limitato | — | V13 | Verifica della configurazione SSH |
 | R-03 | Repudiation | F11, Audit log | Chi ha accesso al database può alterare l'audit log | Copia dei log su file append-only o servizio esterno | — | V16 | Verifica della copia dei log |
 | E-04 | Elevation of privilege | Backend | Mass assignment: l'utente modifica campi riservati (quota, stato account, owner_id) aggiungendoli al JSON | Schemi di input separati con `extra="forbid"`, `owner_id` preso dalla sessione | AC1 | V8 | `test_mass_assignment` |
+| E-05 | Elevation of privilege | Fetcher | Differenze tra parser di URL usate per aggirare i controlli SSRF (es. `http://pubblico.com@127.0.0.1/`) | Un solo parser e un solo oggetto URL normalizzato dall'ingresso al client HTTP | AC7 | V1 | `test_ssrf_parser_differential` |
+| D-07 | Denial of service | Worker | ReDoS: un URL costruito apposta blocca un'espressione regolare | Regex semplici, lunghezza limitata prima del confronto, timeout per job | AC3 | V1 | `test_regex_redos_inputs` |
+| T-11 | Tampering | Backend | Race condition: richieste parallele superano la quota o riusano un codice monouso | Aggiornamenti atomici condizionali nel database | AC1, AC10 | V2 | `test_quota_race_condition`, `test_recovery_code_race` |
 
 ## 8. Abuse case
 
