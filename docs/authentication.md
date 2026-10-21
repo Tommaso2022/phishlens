@@ -84,3 +84,34 @@ I contatori sono su Redis, con scadenza automatica. L'IP considerato è quello v
 | ID di sessione | `secrets.token_urlsafe(32)` | Vedi ADR-002 | Salvato come hash |
 
 Nessun token compare nei log. Il sistema non genera mai password per l'utente e non esistono account predefiniti.
+## 7. Sessioni
+
+Implementazione: ADR-002. Riferimenti: ASVS v5.0.0 capitolo V7.
+
+### 7.1 Scadenze
+
+| Parametro | Valore |
+| --- | --- |
+| Sessione parziale (dopo la sola password) | 5 minuti, utilizzabile solo per il secondo fattore |
+| Inattività massima | 30 minuti, misurati lato server |
+| Durata massima dal login | 12 ore, indipendente dall'attività |
+
+Allo scadere di uno dei due limiti serve un nuovo login completo (password + TOTP). I valori rientrano nei limiti di NIST SP 800-63B per il livello AAL2, quindi non ci sono deviazioni da giustificare.
+
+### 7.2 Sessioni contemporanee
+
+Ogni account può avere al massimo 5 sessioni attive. Al sesto login la sessione meno recente viene chiusa automaticamente e l'evento viene registrato nell'audit log. L'utente vede e chiude le proprie sessioni dalla pagina "Sessioni attive".
+
+### 7.3 Quando le sessioni vengono chiuse
+
+| Evento | Effetto |
+| --- | --- |
+| Logout | Chiusa la sessione corrente |
+| Reset della password | Chiuse tutte le sessioni |
+| Cambio password o modifica della MFA | Opzione, attiva di default, per chiudere tutte le altre sessioni |
+| Disattivazione o cancellazione dell'account | Chiuse tutte le sessioni |
+| Comando CLI dell'amministratore | Chiuse le sessioni di un utente o di tutti |
+
+### 7.4 Operazioni che richiedono di autenticarsi di nuovo
+
+Password e TOTP sono richiesti, anche con una sessione valida, per: cambiare email o password, modificare la MFA, rigenerare i codici di recupero, cancellare l'account. Per chiudere le proprie sessioni dalla pagina "Sessioni attive" basta la password.

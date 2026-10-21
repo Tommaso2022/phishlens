@@ -75,6 +75,8 @@ flowchart LR
     S[Siti analizzati]
     API[API esterne]
     BL[Blocklist]
+    HIBP[HIBP Pwned Passwords]
+    B -- "F12 prefisso hash" --> HIBP
   end
 
   U -- "F1 HTTPS" --> C
@@ -103,6 +105,7 @@ flowchart LR
 | F9 | Worker → API esterne | URL o hash; report in risposta | Sì: verso Internet non fidato | TLS con verifica del certificato, chiavi solo lato server, risposte validate |
 | F10 | Worker → Blocklist | Download periodico delle liste | Sì: verso Internet non fidato | TLS, controllo del formato prima dell'uso |
 | F11 | Amministratore → Server | Comandi della CLI | Sì: Internet → server | SSH con chiave, audit log (ADR-001) |
+| F12 | Backend → api.pwnedpasswords.com | Primi 5 caratteri dell'hash SHA-1 della password | Sì: verso Internet | k-anonymity, TLS con verifica del certificato, uscita del backend consentita solo verso questo dominio, timeout |
 
 ## 6. Ipotesi di sicurezza
 
@@ -175,6 +178,7 @@ flowchart LR
 - **R2.** I dati di un utente cancellato restano nei backup fino alla loro scadenza (es. 30 giorni). Dichiarato nell'informativa.
 - **R3.** Il traffico tra backend e database non è cifrato: resta sulla rete Docker interna dello stesso host.
 - **R4.** L'audit log è nel database: chi ottiene accesso al DB può alterarlo. Copia esterna dei log prevista dopo l'MVP.
+- **R5.** Se HIBP non risponde, la password viene accettata dopo i soli controlli locali. Bloccare le registrazioni sarebbe peggio.
 
 ## 10. Storico delle revisioni
 | Versione | Data | Modifica |

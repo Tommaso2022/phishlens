@@ -236,121 +236,123 @@ Ordine di compilazione consigliato: V8, V6, V7, V1, V2, poi gli altri capitoli.
 
 | ID | Requisito | Liv. | Applicabile | Implementazione | Verifica | Stato |
 | --- | --- | --- | --- | --- | --- | --- |
-| v5.0.0-6.1.1 | Verify that application documentation defines how controls such as rate limiting, anti-automation, and adaptive response, are used to defend against attacks such as credential stuffing and password brute force. The documentation must make clear how these controls are configured and prevent malicious account lockout. | L1 |  |  |  | Da fare |
-| v5.0.0-6.1.2 | Verify that a list of context-specific words is documented in order to prevent their use in passwords. The list could include permutations of organization names, product names, system identifiers, project codenames, department or role names, and similar. | L2 |  |  |  | Da fare |
-| v5.0.0-6.1.3 | Verify that, if the application includes multiple authentication pathways, these are all documented together with the security controls and authentication strength which must be consistently enforced across them. | L2 |  |  |  | Da fare |
+| v5.0.0-6.1.1 | Verify that application documentation defines how controls such as rate limiting, anti-automation, and adaptive response, are used to defend against attacks such as credential stuffing and password brute force. The documentation must make clear how these controls are configured and prevent malicious account lockout. | L1 | Sì | `docs/authentication.md`, sezione 3 | Revisione del documento | Da fare |
+| v5.0.0-6.1.2 | Verify that a list of context-specific words is documented in order to prevent their use in passwords. The list could include permutations of organization names, product names, system identifiers, project codenames, department or role names, and similar. | L2 | Sì | `docs/authentication.md`, sezione 2.1 | Revisione del documento | Da fare |
+| v5.0.0-6.1.3 | Verify that, if the application includes multiple authentication pathways, these are all documented together with the security controls and authentication strength which must be consistently enforced across them. | L2 | Sì | `docs/authentication.md`, sezione 1 | Revisione: ogni endpoint di autenticazione compare nella tabella | Da fare |
 
 ### V6.2 Password Security
 
 | ID | Requisito | Liv. | Applicabile | Implementazione | Verifica | Stato |
 | --- | --- | --- | --- | --- | --- | --- |
-| v5.0.0-6.2.1 | Verify that user set passwords are at least 8 characters in length although a minimum of 15 characters is strongly recommended. | L1 |  |  |  | Da fare |
-| v5.0.0-6.2.2 | Verify that users can change their password. | L1 |  |  |  | Da fare |
-| v5.0.0-6.2.3 | Verify that password change functionality requires the user's current and new password. | L1 |  |  |  | Da fare |
-| v5.0.0-6.2.4 | Verify that passwords submitted during account registration or password change are checked against an available set of, at least, the top 3000 passwords which match the application's password policy, e.g. minimum length. | L1 |  |  |  | Da fare |
-| v5.0.0-6.2.5 | Verify that passwords of any composition can be used, without rules limiting the type of characters permitted. There must be no requirement for a minimum number of upper or lower case characters, numbers, or special characters. | L1 |  |  |  | Da fare |
-| v5.0.0-6.2.6 | Verify that password input fields use type=password to mask the entry. Applications may allow the user to temporarily view the entire masked password, or the last typed character of the password. | L1 |  |  |  | Da fare |
-| v5.0.0-6.2.7 | Verify that "paste" functionality, browser password helpers, and external password managers are permitted. | L1 |  |  |  | Da fare |
-| v5.0.0-6.2.8 | Verify that the application verifies the user's password exactly as received from the user, without any modifications such as truncation or case transformation. | L1 |  |  |  | Da fare |
-| v5.0.0-6.2.9 | Verify that passwords of at least 64 characters are permitted. | L2 |  |  |  | Da fare |
-| v5.0.0-6.2.10 | Verify that a user's password stays valid until it is discovered to be compromised or the user rotates it. The application must not require periodic credential rotation. | L2 |  |  |  | Da fare |
-| v5.0.0-6.2.11 | Verify that the documented list of context specific words is used to prevent easy to guess passwords being created. | L2 |  |  |  | Da fare |
-| v5.0.0-6.2.12 | Verify that passwords submitted during account registration or password changes are checked against a set of breached passwords. | L2 |  |  |  | Da fare |
+| v5.0.0-6.2.1 | Verify that user set passwords are at least 8 characters in length although a minimum of 15 characters is strongly recommended. | L1 | Sì | Minimo 15 caratteri in `auth/password_policy.py` | `test_password_min_length` | Da fare |
+| v5.0.0-6.2.2 | Verify that users can change their password. | L1 | Sì | `POST /me/password` | `test_password_change` | Da fare |
+| v5.0.0-6.2.3 | Verify that password change functionality requires the user's current and new password. | L1 | Sì | Il cambio richiede password attuale e nuova | `test_password_change_requires_current` | Da fare |
+| v5.0.0-6.2.4 | Verify that passwords submitted during account registration or password change are checked against an available set of, at least, the top 3000 passwords which match the application's password policy, e.g. minimum length. | L1 | Sì | Lista di password comuni filtrata per la policy, in `auth/data/common-passwords.txt` | `test_common_password_rejected` | Da fare |
+| v5.0.0-6.2.5 | Verify that passwords of any composition can be used, without rules limiting the type of characters permitted. There must be no requirement for a minimum number of upper or lower case characters, numbers, or special characters. | L1 | Sì | Nessuna regola di composizione | `test_password_any_composition` | Da fare |
+| v5.0.0-6.2.6 | Verify that password input fields use type=password to mask the entry. Applications may allow the user to temporarily view the entire masked password, or the last typed character of the password. | L1 | Sì | Campi `type="password"` con pulsante mostra/nascondi | Revisione del frontend | Da fare |
+| v5.0.0-6.2.7 | Verify that "paste" functionality, browser password helpers, and external password managers are permitted. | L1 | Sì | Incolla consentito; attributi `autocomplete="current-password"` e `"new-password"` | Revisione del frontend | Da fare |
+| v5.0.0-6.2.8 | Verify that the application verifies the user's password exactly as received from the user, without any modifications such as truncation or case transformation. | L1 | Sì | Password passata ad Argon2id così com'è: nessun trim, troncamento o cambio di maiuscole | `test_password_not_modified` | Da fare |
+| v5.0.0-6.2.9 | Verify that passwords of at least 64 characters are permitted. | L2 | Sì | Massimo 128 caratteri, limite contro il DoS sull'hashing | `test_password_64_chars_accepted`, `test_password_over_max_rejected` | Da fare |
+| v5.0.0-6.2.10 | Verify that a user's password stays valid until it is discovered to be compromised or the user rotates it. The application must not require periodic credential rotation. | L2 | Sì | Nessuna scadenza periodica; cambio richiesto solo se la password risulta compromessa | Revisione | Da fare |
+| v5.0.0-6.2.11 | Verify that the documented list of context specific words is used to prevent easy to guess passwords being created. | L2 | Sì | Parole vietate della sezione 2.1 applicate senza distinzione di maiuscole | `test_context_words_rejected` | Da fare |
+| v5.0.0-6.2.12 | Verify that passwords submitted during account registration or password changes are checked against a set of breached passwords. | L2 | Sì | Pwned Passwords di HIBP con k-anonymity: si invia solo il prefisso di 5 caratteri dell'hash SHA-1 | `test_breached_password_rejected` (API simulata) | Da fare |
 
 ### V6.3 General Authentication Security
 
 | ID | Requisito | Liv. | Applicabile | Implementazione | Verifica | Stato |
 | --- | --- | --- | --- | --- | --- | --- |
-| v5.0.0-6.3.1 | Verify that controls to prevent attacks such as credential stuffing and password brute force are implemented according to the application's security documentation. | L1 |  |  |  | Da fare |
-| v5.0.0-6.3.2 | Verify that default user accounts (e.g., "root", "admin", or "sa") are not present in the application or are disabled. | L1 |  |  |  | Da fare |
-| v5.0.0-6.3.3 | Verify that either a multi-factor authentication mechanism or a combination of single-factor authentication mechanisms, must be used in order to access the application. For L3, one of the factors must be a hardware-based authentication mechanism which provides compromise and impersonation resistance against phishing attacks while verifying the intent to authenticate by requiring a user-initiated action (such as a button press on a FIDO hardware key or a mobile phone). Relaxing any of the considerations in this requirement requires a fully documented rationale and a comprehensive set of mitigating controls. | L2 |  |  |  | Da fare |
-| v5.0.0-6.3.4 | Verify that, if the application includes multiple authentication pathways, there are no undocumented pathways and that security controls and authentication strength are enforced consistently. | L2 |  |  |  | Da fare |
+| v5.0.0-6.3.1 | Verify that controls to prevent attacks such as credential stuffing and password brute force are implemented according to the application's security documentation. | L1 | Sì | Rate limit per coppia account+IP e per IP, ritardo progressivo, nessun blocco permanente (sezione 3) | `test_login_rate_limit`, `test_no_malicious_lockout` | Da fare |
+| v5.0.0-6.3.2 | Verify that default user accounts (e.g., "root", "admin", or "sa") are not present in the application or are disabled. | L1 | Sì | Nessun account predefinito né utenti creati dalle migrazioni; amministrazione solo via CLI (ADR-001) | `test_no_default_accounts` | Da fare |
+| v5.0.0-6.3.3 | Verify that either a multi-factor authentication mechanism or a combination of single-factor authentication mechanisms, must be used in order to access the application. For L3, one of the factors must be a hardware-based authentication mechanism which provides compromise and impersonation resistance against phishing attacks while verifying the intent to authenticate by requiring a user-initiated action (such as a button press on a FIDO hardware key or a mobile phone). Relaxing any of the considerations in this requirement requires a fully documented rationale and a comprehensive set of mitigating controls. | L2 | Sì | MFA TOTP obbligatoria, configurata al primo accesso (ADR-003) | `test_login_requires_totp`, `test_no_access_before_mfa_setup` | Da fare |
+| v5.0.0-6.3.4 | Verify that, if the application includes multiple authentication pathways, there are no undocumented pathways and that security controls and authentication strength are enforced consistently. | L2 | Sì | Tre percorsi documentati nella sezione 1, tutti con lo stesso livello di sicurezza | `test_all_routes_require_auth` e revisione dell'allowlist | Da fare |
 
 ### V6.4 Authentication Factor Lifecycle and Recovery
 
 | ID | Requisito | Liv. | Applicabile | Implementazione | Verifica | Stato |
 | --- | --- | --- | --- | --- | --- | --- |
-| v5.0.0-6.4.1 | Verify that system generated initial passwords or activation codes are securely randomly generated, follow the existing password policy, and expire after a short period of time or after they are initially used. These initial secrets must not be permitted to become the long term password. | L1 |  |  |  | Da fare |
-| v5.0.0-6.4.2 | Verify that password hints or knowledge-based authentication (so-called "secret questions") are not present. | L1 |  |  |  | Da fare |
-| v5.0.0-6.4.3 | Verify that a secure process for resetting a forgotten password is implemented, that does not bypass any enabled multi-factor authentication mechanisms. | L2 |  |  |  | Da fare |
-| v5.0.0-6.4.4 | Verify that if a multi-factor authentication factor is lost, evidence of identity proofing is performed at the same level as during enrollment. | L2 |  |  |  | Da fare |
+| v5.0.0-6.4.1 | Verify that system generated initial passwords or activation codes are securely randomly generated, follow the existing password policy, and expire after a short period of time or after they are initially used. These initial secrets must not be permitted to become the long term password. | L1 | Sì | Token di verifica e reset con `secrets.token_urlsafe(32)`, monouso, con scadenza; nessuna password generata dal sistema | `test_tokens_single_use`, `test_tokens_expire` | Da fare |
+| v5.0.0-6.4.2 | Verify that password hints or knowledge-based authentication (so-called "secret questions") are not present. | L1 | Sì | Nessuna domanda segreta né suggerimento per la password | Revisione | Da fare |
+| v5.0.0-6.4.3 | Verify that a secure process for resetting a forgotten password is implemented, that does not bypass any enabled multi-factor authentication mechanisms. | L2 | Sì | Dopo il reset il TOTP è sempre richiesto; il reset revoca tutte le sessioni | `test_reset_does_not_bypass_mfa`, `test_reset_revokes_sessions` | Da fare |
+| v5.0.0-6.4.4 | Verify that if a multi-factor authentication factor is lost, evidence of identity proofing is performed at the same level as during enrollment. | L2 | Sì | Codici di recupero; se persi anche quelli, procedura via CLI della sezione 5 | Revisione della procedura | Da fare |
 
 ### V6.5 General Multi-factor authentication requirements
 
 | ID | Requisito | Liv. | Applicabile | Implementazione | Verifica | Stato |
 | --- | --- | --- | --- | --- | --- | --- |
-| v5.0.0-6.5.1 | Verify that lookup secrets, out-of-band authentication requests or codes, and time-based one-time passwords (TOTPs) are only successfully usable once. | L2 |  |  |  | Da fare |
-| v5.0.0-6.5.2 | Verify that, when being stored in the application's backend, lookup secrets with less than 112 bits of entropy (19 random alphanumeric characters or 34 random digits) are hashed with an approved password storage hashing algorithm that incorporates a 32-bit random salt. A standard hash function can be used if the secret has 112 bits of entropy or more. | L2 |  |  |  | Da fare |
-| v5.0.0-6.5.3 | Verify that lookup secrets, out-of-band authentication code, and time-based one-time password seeds, are generated using a Cryptographically Secure Pseudorandom Number Generator (CSPRNG) to avoid predictable values. | L2 |  |  |  | Da fare |
-| v5.0.0-6.5.4 | Verify that lookup secrets and out-of-band authentication codes have a minimum of 20 bits of entropy (typically 4 random alphanumeric characters or 6 random digits is sufficient). | L2 |  |  |  | Da fare |
-| v5.0.0-6.5.5 | Verify that out-of-band authentication requests, codes, or tokens, as well as time-based one-time passwords (TOTPs) have a defined lifetime. Out of band requests must have a maximum lifetime of 10 minutes and for TOTP a maximum lifetime of 30 seconds. | L2 |  |  |  | Da fare |
+| v5.0.0-6.5.1 | Verify that lookup secrets, out-of-band authentication requests or codes, and time-based one-time passwords (TOTPs) are only successfully usable once. | L2 | Sì | Ultimo intervallo TOTP accettato salvato per utente; codici di recupero marcati come usati | `test_totp_replay_rejected`, `test_recovery_code_single_use` | Da fare |
+| v5.0.0-6.5.2 | Verify that, when being stored in the application's backend, lookup secrets with less than 112 bits of entropy (19 random alphanumeric characters or 34 random digits) are hashed with an approved password storage hashing algorithm that incorporates a 32-bit random salt. A standard hash function can be used if the secret has 112 bits of entropy or more. | L2 | Sì | Codici di recupero salvati con Argon2id | `test_recovery_codes_hashed` | Da fare |
+| v5.0.0-6.5.3 | Verify that lookup secrets, out-of-band authentication code, and time-based one-time password seeds, are generated using a Cryptographically Secure Pseudorandom Number Generator (CSPRNG) to avoid predictable values. | L2 | Sì | Modulo `secrets` e `pyotp.random_base32()`; regola semgrep che vieta `random` nel codice di autenticazione | Regola semgrep in CI | Da fare |
+| v5.0.0-6.5.4 | Verify that lookup secrets and out-of-band authentication codes have a minimum of 20 bits of entropy (typically 4 random alphanumeric characters or 6 random digits is sufficient). | L2 | Sì | 10 codici di recupero da 16 caratteri base32 (80 bit) | `test_recovery_code_entropy` | Da fare |
+| v5.0.0-6.5.5 | Verify that out-of-band authentication requests, codes, or tokens, as well as time-based one-time passwords (TOTPs) have a defined lifetime. Out of band requests must have a maximum lifetime of 10 minutes and for TOTP a maximum lifetime of 30 seconds. | L2 | Sì, con deviazione documentata | TOTP con passo di 30 s e tolleranza di un solo intervallo precedente per lo sfasamento degli orologi (sezione 4); token di reset validi 10 minuti | `test_totp_window`, `test_reset_token_expiry` | Da fare |
 
 ### V6.6 Out-of-Band authentication mechanisms
 
 | ID | Requisito | Liv. | Applicabile | Implementazione | Verifica | Stato |
 | --- | --- | --- | --- | --- | --- | --- |
-| v5.0.0-6.6.1 | Verify that authentication mechanisms using the Public Switched Telephone Network (PSTN) to deliver One-time Passwords (OTPs) via phone or SMS are offered only when the phone number has previously been validated, alternate stronger methods (such as Time based One-time Passwords) are also offered, and the service provides information on their security risks to users. For L3 applications, phone and SMS must not be available as options. | L2 |  |  |  | Da fare |
-| v5.0.0-6.6.2 | Verify that out-of-band authentication requests, codes, or tokens are bound to the original authentication request for which they were generated and are not usable for a previous or subsequent one. | L2 |  |  |  | Da fare |
-| v5.0.0-6.6.3 | Verify that a code based out-of-band authentication mechanism is protected against brute force attacks by using rate limiting. Consider also using a code with at least 64 bits of entropy. | L2 |  |  |  | Da fare |
+| v5.0.0-6.6.1 | Verify that authentication mechanisms using the Public Switched Telephone Network (PSTN) to deliver One-time Passwords (OTPs) via phone or SMS are offered only when the phone number has previously been validated, alternate stronger methods (such as Time based One-time Passwords) are also offered, and the service provides information on their security risks to users. For L3 applications, phone and SMS must not be available as options. | L2 | No — nessun codice via SMS o telefono | — | — | Non applicabile |
+| v5.0.0-6.6.2 | Verify that out-of-band authentication requests, codes, or tokens are bound to the original authentication request for which they were generated and are not usable for a previous or subsequent one. | L2 | Sì | Il token di reset è legato all'utente; una nuova richiesta invalida le precedenti | `test_reset_token_previous_invalidated` | Da fare |
+| v5.0.0-6.6.3 | Verify that a code based out-of-band authentication mechanism is protected against brute force attacks by using rate limiting. Consider also using a code with at least 64 bits of entropy. | L2 | Sì | Token da 256 bit e rate limit sulle richieste di reset e verifica | `test_reset_rate_limit` | Da fare |
 
 ### V6.8 Authentication with an Identity Provider
 
 | ID | Requisito | Liv. | Applicabile | Implementazione | Verifica | Stato |
 | --- | --- | --- | --- | --- | --- | --- |
-| v5.0.0-6.8.1 | Verify that, if the application supports multiple identity providers (IdPs), the user's identity cannot be spoofed via another supported identity provider (eg. by using the same user identifier). The standard mitigation would be for the application to register and identify the user using a combination of the IdP ID (serving as a namespace) and the user's ID in the IdP. | L2 |  |  |  | Da fare |
-| v5.0.0-6.8.2 | Verify that the presence and integrity of digital signatures on authentication assertions (for example on JWTs or SAML assertions) are always validated, rejecting any assertions that are unsigned or have invalid signatures. | L2 |  |  |  | Da fare |
-| v5.0.0-6.8.3 | Verify that SAML assertions are uniquely processed and used only once within the validity period to prevent replay attacks. | L2 |  |  |  | Da fare |
-| v5.0.0-6.8.4 | Verify that, if an application uses a separate Identity Provider (IdP) and expects specific authentication strength, methods, or recentness for specific functions, the application verifies this using the information returned by the IdP. For example, if OIDC is used, this might be achieved by validating ID Token claims such as 'acr', 'amr', and 'auth_time' (if present). If the IdP does not provide this information, the application must have a documented fallback approach that assumes that the minimum strength authentication mechanism was used (for example, single-factor authentication using username and password). | L2 |  |  |  | Da fare |
+| v5.0.0-6.8.1 | Verify that, if the application supports multiple identity providers (IdPs), the user's identity cannot be spoofed via another supported identity provider (eg. by using the same user identifier). The standard mitigation would be for the application to register and identify the user using a combination of the IdP ID (serving as a namespace) and the user's ID in the IdP. | L2 | No — nessun identity provider esterno (coerente con V10) | — | — | Non applicabile |
+| v5.0.0-6.8.2 | Verify that the presence and integrity of digital signatures on authentication assertions (for example on JWTs or SAML assertions) are always validated, rejecting any assertions that are unsigned or have invalid signatures. | L2 | No — nessun identity provider esterno (coerente con V10) | — | — | Non applicabile |
+| v5.0.0-6.8.3 | Verify that SAML assertions are uniquely processed and used only once within the validity period to prevent replay attacks. | L2 | No — nessun identity provider esterno (coerente con V10) | — | — | Non applicabile |
+| v5.0.0-6.8.4 | Verify that, if an application uses a separate Identity Provider (IdP) and expects specific authentication strength, methods, or recentness for specific functions, the application verifies this using the information returned by the IdP. For example, if OIDC is used, this might be achieved by validating ID Token claims such as 'acr', 'amr', and 'auth_time' (if present). If the IdP does not provide this information, the application must have a documented fallback approach that assumes that the minimum strength authentication mechanism was used (for example, single-factor authentication using username and password). | L2 | No — nessun identity provider esterno (coerente con V10) | — | — | Non applicabile |
 
+## V7 Session Management
 ## V7 Session Management
 
 ### V7.1 Session Management Documentation
 
 | ID | Requisito | Liv. | Applicabile | Implementazione | Verifica | Stato |
 | --- | --- | --- | --- | --- | --- | --- |
-| v5.0.0-7.1.1 | Verify that the user's session inactivity timeout and absolute maximum session lifetime are documented, are appropriate in combination with other controls, and that the documentation includes justification for any deviations from NIST SP 800-63B re-authentication requirements. | L2 |  |  |  | Da fare |
-| v5.0.0-7.1.2 | Verify that the documentation defines how many concurrent (parallel) sessions are allowed for one account as well as the intended behaviors and actions to be taken when the maximum number of active sessions is reached. | L2 |  |  |  | Da fare |
-| v5.0.0-7.1.3 | Verify that all systems that create and manage user sessions as part of a federated identity management ecosystem (such as SSO systems) are documented along with controls to coordinate session lifetimes, termination, and any other conditions that require re-authentication. | L2 |  |  |  | Da fare |
+| v5.0.0-7.1.1 | Verify that the user's session inactivity timeout and absolute maximum session lifetime are documented, are appropriate in combination with other controls, and that the documentation includes justification for any deviations from NIST SP 800-63B re-authentication requirements. | L2 | Sì | `docs/authentication.md`, sezione 7.1 | Revisione del documento | Da fare |
+| v5.0.0-7.1.2 | Verify that the documentation defines how many concurrent (parallel) sessions are allowed for one account as well as the intended behaviors and actions to be taken when the maximum number of active sessions is reached. | L2 | Sì | `docs/authentication.md`, sezione 7.2 | Revisione del documento | Da fare |
+| v5.0.0-7.1.3 | Verify that all systems that create and manage user sessions as part of a federated identity management ecosystem (such as SSO systems) are documented along with controls to coordinate session lifetimes, termination, and any other conditions that require re-authentication. | L2 | No — nessuna identità federata né SSO (coerente con V10) | — | — | Non applicabile |
 
 ### V7.2 Fundamental Session Management Security
 
 | ID | Requisito | Liv. | Applicabile | Implementazione | Verifica | Stato |
 | --- | --- | --- | --- | --- | --- | --- |
-| v5.0.0-7.2.1 | Verify that the application performs all session token verification using a trusted, backend service. | L1 |  |  |  | Da fare |
-| v5.0.0-7.2.2 | Verify that the application uses either self-contained or reference tokens that are dynamically generated for session management, i.e. not using static API secrets and keys. | L1 |  |  |  | Da fare |
-| v5.0.0-7.2.3 | Verify that if reference tokens are used to represent user sessions, they are unique and generated using a cryptographically secure pseudo-random number generator (CSPRNG) and possess at least 128 bits of entropy. | L1 |  |  |  | Da fare |
-| v5.0.0-7.2.4 | Verify that the application generates a new session token on user authentication, including re-authentication, and terminates the current session token. | L1 |  |  |  | Da fare |
+| v5.0.0-7.2.1 | Verify that the application performs all session token verification using a trusted, backend service. | L1 | Sì | Sessione cercata nel database dal backend a ogni richiesta, tramite l'hash del token (ADR-002) | `test_forged_session_rejected` | Da fare |
+| v5.0.0-7.2.2 | Verify that the application uses either self-contained or reference tokens that are dynamically generated for session management, i.e. not using static API secrets and keys. | L1 | Sì | Token di riferimento generati a ogni login; nessuna chiave statica | Revisione | Da fare |
+| v5.0.0-7.2.3 | Verify that if reference tokens are used to represent user sessions, they are unique and generated using a cryptographically secure pseudo-random number generator (CSPRNG) and possess at least 128 bits of entropy. | L1 | Sì | `secrets.token_urlsafe(32)`: 256 bit, unicità garantita da vincolo UNIQUE sull'hash | `test_session_token_entropy` | Da fare |
+| v5.0.0-7.2.4 | Verify that the application generates a new session token on user authentication, including re-authentication, and terminates the current session token. | L1 | Sì | Nuovo token dopo la password (sessione parziale) e dopo il secondo fattore; quello precedente viene eliminato | `test_session_rotated_on_login` | Da fare |
 
 ### V7.3 Session Timeout
 
 | ID | Requisito | Liv. | Applicabile | Implementazione | Verifica | Stato |
 | --- | --- | --- | --- | --- | --- | --- |
-| v5.0.0-7.3.1 | Verify that there is an inactivity timeout such that re-authentication is enforced according to risk analysis and documented security decisions. | L2 |  |  |  | Da fare |
-| v5.0.0-7.3.2 | Verify that there is an absolute maximum session lifetime such that re-authentication is enforced according to risk analysis and documented security decisions. | L2 |  |  |  | Da fare |
+| v5.0.0-7.3.1 | Verify that there is an inactivity timeout such that re-authentication is enforced according to risk analysis and documented security decisions. | L2 | Sì | Inattività massima 30 minuti, aggiornata lato server (sezione 7.1) | `test_session_idle_timeout` | Da fare |
+| v5.0.0-7.3.2 | Verify that there is an absolute maximum session lifetime such that re-authentication is enforced according to risk analysis and documented security decisions. | L2 | Sì | Durata massima 12 ore dal login, indipendente dall'attività (sezione 7.1) | `test_session_absolute_timeout` | Da fare |
 
 ### V7.4 Session Termination
 
 | ID | Requisito | Liv. | Applicabile | Implementazione | Verifica | Stato |
 | --- | --- | --- | --- | --- | --- | --- |
-| v5.0.0-7.4.1 | Verify that when session termination is triggered (such as logout or expiration), the application disallows any further use of the session. For reference tokens or stateful sessions, this means invalidating the session data at the application backend. Applications using self-contained tokens will need a solution such as maintaining a list of terminated tokens, disallowing tokens produced before a per-user date and time or rotating a per-user signing key. | L1 |  |  |  | Da fare |
-| v5.0.0-7.4.2 | Verify that the application terminates all active sessions when a user account is disabled or deleted (such as an employee leaving the company). | L1 |  |  |  | Da fare |
-| v5.0.0-7.4.3 | Verify that the application gives the option to terminate all other active sessions after a successful change or removal of any authentication factor (including password change via reset or recovery and, if present, an MFA settings update). | L2 |  |  |  | Da fare |
-| v5.0.0-7.4.4 | Verify that all pages that require authentication have easy and visible access to logout functionality. | L2 |  |  |  | Da fare |
-| v5.0.0-7.4.5 | Verify that application administrators are able to terminate active sessions for an individual user or for all users. | L2 |  |  |  | Da fare |
+| v5.0.0-7.4.1 | Verify that when session termination is triggered (such as logout or expiration), the application disallows any further use of the session. For reference tokens or stateful sessions, this means invalidating the session data at the application backend. Applications using self-contained tokens will need a solution such as maintaining a list of terminated tokens, disallowing tokens produced before a per-user date and time or rotating a per-user signing key. | L1 | Sì | Logout e scadenza eliminano la sessione dal database; il cookie viene cancellato | `test_logout_invalidates_session` | Da fare |
+| v5.0.0-7.4.2 | Verify that the application terminates all active sessions when a user account is disabled or deleted (such as an employee leaving the company). | L1 | Sì | Disattivazione o cancellazione dell'account eliminano tutte le sue sessioni | `test_disable_user_revokes_sessions` | Da fare |
+| v5.0.0-7.4.3 | Verify that the application gives the option to terminate all other active sessions after a successful change or removal of any authentication factor (including password change via reset or recovery and, if present, an MFA settings update). | L2 | Sì | Dopo un reset: tutte le sessioni chiuse; dopo cambio password o modifica MFA: opzione, attiva di default, per chiudere le altre | `test_password_change_revokes_others` | Da fare |
+| v5.0.0-7.4.4 | Verify that all pages that require authentication have easy and visible access to logout functionality. | L2 | Sì | Pulsante "Esci" nell'intestazione di ogni pagina autenticata | Revisione del frontend | Da fare |
+| v5.0.0-7.4.5 | Verify that application administrators are able to terminate active sessions for an individual user or for all users. | L2 | Sì | CLI: `phishlens-admin session revoke --user EMAIL` e `--all` (ADR-001) | `test_cli_revoke_sessions` | Da fare |
 
 ### V7.5 Defenses Against Session Abuse
 
 | ID | Requisito | Liv. | Applicabile | Implementazione | Verifica | Stato |
 | --- | --- | --- | --- | --- | --- | --- |
-| v5.0.0-7.5.1 | Verify that the application requires full re-authentication before allowing modifications to sensitive account attributes which may affect authentication such as email address, phone number, MFA configuration, or other information used in account recovery. | L2 |  |  |  | Da fare |
-| v5.0.0-7.5.2 | Verify that users are able to view and (having authenticated again with at least one factor) terminate any or all currently active sessions. | L2 |  |  |  | Da fare |
+| v5.0.0-7.5.1 | Verify that the application requires full re-authentication before allowing modifications to sensitive account attributes which may affect authentication such as email address, phone number, MFA configuration, or other information used in account recovery. | L2 | Sì | Password e TOTP richiesti per cambiare email, password, MFA, codici di recupero e per cancellare l'account | `test_sensitive_changes_require_reauth` | Da fare |
+| v5.0.0-7.5.2 | Verify that users are able to view and (having authenticated again with at least one factor) terminate any or all currently active sessions. | L2 | Sì | Pagina "Sessioni attive": browser, IP abbreviato, ultima attività; chiusura dopo conferma della password | `test_list_and_revoke_own_sessions` | Da fare |
 
 ### V7.6 Federated Re-authentication
 
 | ID | Requisito | Liv. | Applicabile | Implementazione | Verifica | Stato |
 | --- | --- | --- | --- | --- | --- | --- |
-| v5.0.0-7.6.1 | Verify that session lifetime and termination between Relying Parties (RPs) and Identity Providers (IdPs) behave as documented, requiring re-authentication as necessary such as when the maximum time between IdP authentication events is reached. | L2 |  |  |  | Da fare |
-| v5.0.0-7.6.2 | Verify that creation of a session requires either the user's consent or an explicit action, preventing the creation of new application sessions without user interaction. | L2 |  |  |  | Da fare |
+| v5.0.0-7.6.1 | Verify that session lifetime and termination between Relying Parties (RPs) and Identity Providers (IdPs) behave as documented, requiring re-authentication as necessary such as when the maximum time between IdP authentication events is reached. | L2 | No — nessuna identità federata né SSO (coerente con V10) | — | — | Non applicabile |
+| v5.0.0-7.6.2 | Verify that creation of a session requires either the user's consent or an explicit action, preventing the creation of new application sessions without user interaction. | L2 | Sì | Le sessioni nascono solo da un login esplicito; nessun login automatico o "ricordami" | Revisione | Da fare |
+
 
 ## V8 Authorization
 
