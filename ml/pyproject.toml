@@ -1,0 +1,27 @@
+[project]
+name = "phishlens-ml"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "matplotlib>=3.11.2",
+    "pandas>=3.0.6",
+    "phishlens-core",
+    "pyarrow>=26.0.0",
+    "scikit-learn>=1.9.1",
+    "shap>=0.54.1",
+    "xgboost>=3.4.1",
+]
+
+[project.optional-dependencies]
+notebook = [
+    "jupyterlab>=4.6.4",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.4,<0.14.0"]
+build-backend = "uv_build"
+
+[tool.uv.sources]
+phishlens-core = { workspace = true }
