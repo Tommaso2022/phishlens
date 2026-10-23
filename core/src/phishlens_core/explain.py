@@ -1,13 +1,20 @@
 """Traduzione dei contributi SHAP in frasi comprensibili.
 
-Usato dall'analisi del modello e, più avanti, dal worker per spiegare
-all'utente perché un dominio ha ricevuto un certo punteggio.
-I testi non contengono mai il nome del dominio: l'interfaccia lo mostrerà
-a parte, in forma non cliccabile.
+Usato dall'analisi del modello e dal worker per spiegare all'utente perché un
+dominio ha ricevuto un certo punteggio.
+
+Le frasi descrivono il valore come un fatto ("Il nome ha 2 parti") e non lo
+giudicano: se quel fatto ha spinto verso "sospetto" o verso "legittimo" lo dice
+il segno del contributo, che l'interfaccia mostra separando le due colonne.
+Così una frase non può contraddire il dato che riporta.
+
+I testi non contengono mai il nome del dominio: l'interfaccia lo mostra a parte,
+in forma non cliccabile.
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 
@@ -19,53 +26,74 @@ class Reason:
     text: str
 
 
-def _n(v) -> str:
-    return f"{v:g}" if isinstance(v, float) else str(v)
+def _count(n, zero: str, one: str, many: str) -> str:
+    n = int(n)
+    if n == 0:
+        return zero
+    return one if n == 1 else many.format(n=n)
 
 
-RISK_TEXT = {
-    "suffix": lambda v: f"Il suffisso .{v} è frequente tra i domini di phishing",
-    "host_length": lambda v: f"Nome di dominio lungo ({_n(v)} caratteri)",
-    "n_labels": lambda v: f"Nome composto da molte parti ({_n(v)})",
-    "n_subdomain_labels": lambda v: f"Contiene sottodomini ({_n(v)})",
-    "domain_label_length": lambda v: f"Nome principale lungo ({_n(v)} caratteri)",
-    "longest_label": lambda v: f"Una parte del nome è molto lunga ({_n(v)} caratteri)",
-    "n_hyphens": lambda v: f"Contiene {_n(v)} trattini",
-    "n_digits": lambda v: f"Contiene {_n(v)} cifre",
-    "digit_ratio": lambda v: "Alta proporzione di cifre nel nome",
-    "entropy": lambda v: "Sequenza di caratteri poco naturale, tipica dei nomi generati",
-    "max_consonant_run": lambda v: f"Sequenza di {_n(v)} consonanti consecutive",
-    "is_ip": lambda v: "Usa un indirizzo IP al posto di un nome di dominio",
-    "is_punycode": lambda v: "Contiene caratteri internazionali che possono imitarne altri",
-    "brand_in_subdomain": lambda v: "Un marchio noto compare nel sottodominio",
-    "brand_in_domain_not_exact": lambda v: "Un marchio noto è inserito in un altro nome di dominio",
-    "n_keywords": lambda v: "Contiene parole tipiche del phishing (accesso, verifica, ...)",
+def _flag(yes: str, no: str) -> Callable[[object], str]:
+    return lambda v: yes if int(v) else no
+
+
+FACTS: dict[str, Callable[[object], str]] = {
+    "host_length": lambda v: f"Il nome è lungo {int(v)} caratteri",
+    "n_labels": lambda v: f"Il nome ha {int(v)} parti separate da punti",
+    "n_subdomain_labels": lambda v: _count(
+        v, "Nessun sottodominio", "Un sottodominio", "{n} livelli di sottodominio"
+    ),
+    "domain_label_length": lambda v: f"Il nome principale è lungo {int(v)} caratteri",
+    "longest_label": lambda v: f"La parte più lunga del nome ha {int(v)} caratteri",
+    "n_hyphens": lambda v: _count(v, "Nessun trattino", "Un trattino", "{n} trattini"),
+    "n_digits": lambda v: _count(v, "Nessuna cifra", "Una cifra", "{n} cifre"),
+    "digit_ratio": lambda v: f"Le cifre sono il {float(v):.0%} dei caratteri",
+    "max_consonant_run": lambda v: _count(
+        v,
+        "Nessuna consonante",
+        "Al massimo una consonante di fila",
+        "Fino a {n} consonanti di fila",
+    ),
+    "is_ip": _flag("È un indirizzo IP, non un nome di dominio", "È un nome di dominio"),
+    "is_punycode": _flag(
+        "Contiene caratteri non latini, che possono imitare lettere comuni",
+        "Solo caratteri latini standard",
+    ),
+    "brand_in_subdomain": _flag(
+        "Un marchio noto compare nel sottodominio", "Nessun marchio noto nel sottodominio"
+    ),
+    "brand_in_domain_not_exact": _flag(
+        "Un marchio noto è inserito in un nome diverso dal suo",
+        "Nessun marchio noto inserito nel nome",
+    ),
+    "n_keywords": lambda v: _count(
+        v,
+        "Nessuna parola tipica del phishing",
+        "Una parola tipica del phishing (accesso, verifica, ...)",
+        "{n} parole tipiche del phishing (accesso, verifica, ...)",
+    ),
 }
 
-SAFE_TEXT = {
-    "suffix": lambda v: f"Il suffisso .{v} è frequente tra i domini legittimi",
-    "host_length": lambda v: f"Nome di dominio breve ({_n(v)} caratteri)",
-    "n_subdomain_labels": lambda v: "Pochi o nessun sottodominio",
-    "domain_label_length": lambda v: "Nome principale breve",
-    "n_digits": lambda v: "Nessuna o poche cifre nel nome",
-    "n_hyphens": lambda v: "Nessuno o pochi trattini",
-    "entropy": lambda v: "Sequenza di caratteri naturale",
-    "n_labels": lambda v: f"Nome composto da poche parti ({_n(v)})",
-    "longest_label": lambda v: "Nessuna parte del nome è insolitamente lunga",
-    "max_consonant_run": lambda v: "Nessuna lunga sequenza di consonanti",
-    "digit_ratio": lambda v: "Poche o nessuna cifra nel nome",
-    "n_keywords": lambda v: "Nessuna parola tipica del phishing",
-    "brand_in_subdomain": lambda v: "Nessun marchio noto nel sottodominio",
-    "brand_in_domain_not_exact": lambda v: "Nessun marchio noto inserito nel nome",
-    "is_punycode": lambda v: "Solo caratteri latini standard",
-    "is_ip": lambda v: "Usa un nome di dominio, non un indirizzo IP",
+# Per suffisso ed entropia la frase dipende dalla direzione del contributo:
+# il valore da solo non dice nulla di comprensibile.
+DIRECTIONAL: dict[str, tuple[Callable[[object], str], Callable[[object], str]]] = {
+    "suffix": (
+        lambda v: f"Il suffisso .{v} è frequente tra i domini di phishing",
+        lambda v: f"Il suffisso .{v} è frequente tra i domini legittimi",
+    ),
+    "entropy": (
+        lambda v: "Combinazione di caratteri poco comune nei nomi legittimi",
+        lambda v: "Combinazione di caratteri comune nei nomi legittimi",
+    ),
 }
 
 
 def describe(feature: str, value, contribution: float) -> str:
-    table = RISK_TEXT if contribution > 0 else SAFE_TEXT
-    fn = table.get(feature)
-    return fn(value) if fn else f"{feature} = {_n(value)}"
+    if feature in DIRECTIONAL:
+        risk, safe = DIRECTIONAL[feature]
+        return (risk if contribution > 0 else safe)(value)
+    fn = FACTS.get(feature)
+    return fn(value) if fn else f"{feature} = {value}"
 
 
 def top_reasons(
