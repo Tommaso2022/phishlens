@@ -54,6 +54,7 @@ BRANDS = (
 )
 
 KEYWORDS = (
+    # inglese
     "login",
     "signin",
     "secure",
@@ -69,6 +70,17 @@ KEYWORDS = (
     "billing",
     "recovery",
     "unlock",
+    # italiano
+    "accesso",
+    "verifica",
+    "sicurezza",
+    "conferma",
+    "aggiorna",
+    "assistenza",
+    "sblocca",
+    "rimborso",
+    "pagamento",
+    "conto",
 )
 
 NUMERIC_FEATURES = (

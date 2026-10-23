@@ -59,3 +59,8 @@ def test_registered_domain():
 def test_entropy():
     assert shannon_entropy("aaaa") == 0
     assert shannon_entropy("ab") == 1
+
+
+def test_italian_keywords():
+    assert extract_host_features("paypal-sicurezza.com")["n_keywords"] == 1
+    assert extract_host_features("poste.it-verifica-account.xyz")["n_keywords"] == 2
