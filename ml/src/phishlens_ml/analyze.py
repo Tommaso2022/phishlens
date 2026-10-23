@@ -1,4 +1,4 @@
-"""Analisi del modello v1: suffissi, errori e falsi positivi su domini esterni.
+"""Analisi del modello: suffissi, errori e falsi positivi su domini esterni.
 
 Uso, dalla radice del repository (dopo phishlens_ml.train):
     uv run python -m phishlens_ml.analyze suffix
@@ -11,11 +11,7 @@ I domini sono stampati in forma "defanged" (esempio[.]com): non diventano link.
 from __future__ import annotations
 
 import argparse
-import csv
-import io
 import json
-import urllib.request
-import zipfile
 from pathlib import Path
 
 import numpy as np
@@ -26,12 +22,10 @@ from phishlens_core.features import FEATURE_NAMES, extract_host_features, regist
 from phishlens_core.url import InvalidURL, parse_url
 
 from phishlens_ml import datasets as ds
+from phishlens_ml import tranco
 from phishlens_ml.train import ARTIFACTS, matrix
 
 HOSTS = ds.DATA_DIR / "processed" / "hosts.parquet"
-TRANCO_URL = "https://tranco-list.eu/top-1m.csv.zip"
-TRANCO_ID_URL = "https://tranco-list.eu/top-1m-id"
-MAX_TRANCO_BYTES = 50 * 1024 * 1024
 
 
 def defang(host: str) -> str:
@@ -41,11 +35,11 @@ def defang(host: str) -> str:
 class Model:
     """Modello v1 con il suo vocabolario dei suffissi e le soglie scelte in validazione."""
 
-    def __init__(self, artifacts: Path = ARTIFACTS):
+    def __init__(self, artifacts: Path = ARTIFACTS, version: str = "v1.1"):
         self.booster = xgb.Booster()
-        self.booster.load_model(artifacts / "model-v1.json")
-        self.vocab = json.loads((artifacts / "suffix-vocab-v1.json").read_text())
-        report = json.loads((artifacts / "report-v1.json").read_text())
+        self.booster.load_model(artifacts / f"model-{version}.json")
+        self.vocab = json.loads((artifacts / f"suffix-vocab-{version}.json").read_text())
+        report = json.loads((artifacts / f"report-{version}.json").read_text())
         self.thresholds = {
             p["target_fpr"]: p["threshold"] for p in report["xgboost"]["operating_points"]
         }
@@ -117,54 +111,16 @@ def cmd_errors(model: Model, hosts: pd.DataFrame, n_missed: int = 10) -> None:
 # ------------------------------------------------------------------ tranco
 
 
-def fetch_tranco(data_dir: Path, manifest: dict) -> Path:
-    raw = data_dir / "raw" / "tranco-top-1m.zip"
-    if not raw.exists():
-        print(f"Download da {TRANCO_URL} ...")
-        ds.download(TRANCO_URL, raw, max_bytes=MAX_TRANCO_BYTES)
-        with urllib.request.urlopen(TRANCO_ID_URL, timeout=30) as r:  # noqa: S310  # nosec B310
-            list_id = r.read(64).decode("ascii", "replace").strip()
-        meta = {
-            "url": TRANCO_URL,
-            "tranco_list_id": list_id,
-            "citation": "Le Pochat et al., Tranco (NDSS 2019), https://tranco-list.eu/",
-        }
-    else:
-        meta = None
-    ds.verify_or_record("tranco-top-1m.zip", raw, manifest, meta)
-    return raw
-
-
-def read_tranco(raw: Path, top_n: int) -> list[str]:
-    with zipfile.ZipFile(raw) as zf:
-        members = [i for i in zf.infolist() if i.filename.endswith(".csv")]
-        if len(members) != 1 or members[0].file_size > 200 * 1024 * 1024:
-            raise ds.DatasetError(
-                f"Archivio Tranco inatteso: {[i.filename for i in zf.infolist()]}"
-            )
-        text = io.TextIOWrapper(zf.open(members[0]), encoding="utf-8")
-        domains = []
-        for row in csv.reader(text):
-            if len(row) != 2 or not row[0].isdigit():
-                continue  # eventuale intestazione o riga malformata
-            if int(row[0]) > top_n:
-                break
-            domains.append(row[1].strip())
-    if not domains:
-        raise ds.DatasetError("Nessun dominio letto dall'elenco Tranco.")
-    return domains
-
-
 def cmd_tranco(
     model: Model, hosts: pd.DataFrame, data_dir: Path, manifest_path: Path, top_n: int
 ) -> None:
     manifest = ds.load_manifest(manifest_path)
-    raw = fetch_tranco(data_dir, manifest)
+    raw = tranco.fetch("domains", data_dir, manifest)
     ds.save_manifest(manifest, manifest_path)
 
     known = set(hosts["registered_domain"])
     rows, skipped_known, invalid = [], 0, 0
-    for d in read_tranco(raw, top_n):
+    for d in tranco.read(raw, top_n):
         try:
             host = parse_url(f"https://{d}/").site_host
         except InvalidURL:
@@ -214,9 +170,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--data-dir", type=Path, default=ds.DATA_DIR)
     parser.add_argument("--manifest", type=Path, default=ds.MANIFEST)
     parser.add_argument("--top", type=int, default=100_000, help="domini Tranco da analizzare")
+    parser.add_argument("--version", default="v1.1", help="versione del modello da analizzare")
     args = parser.parse_args(argv)
 
-    model = Model(args.artifacts)
+    model = Model(args.artifacts, args.version)
     hosts = pd.read_parquet(args.hosts)
     try:
         if args.command == "suffix":

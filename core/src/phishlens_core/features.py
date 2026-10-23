@@ -16,6 +16,7 @@ import re
 from collections import Counter
 from functools import lru_cache
 
+import idna
 import tldextract
 
 from phishlens_core.url import is_ip_address, strip_www
@@ -83,6 +84,22 @@ KEYWORDS = (
     "conto",
 )
 
+# Servizi legittimi su cui chiunque può pubblicare pagine. Per questi host il
+# nome di dominio non dice nulla sul contenuto: il modello v1 non li valuta.
+# Oltre a questo elenco valgono i suffissi "privati" della Public Suffix List
+# (web.app, firebaseapp.com, github.io, ...), riconosciuti automaticamente.
+SHARED_HOSTING = frozenset(
+    {
+        "ipfs.io",
+        "cloudflare-ipfs.com",
+        "dweb.link",
+        "w3s.link",
+        "nftstorage.link",
+        "fleek.co",
+        "4everland.io",
+    }
+)
+
 NUMERIC_FEATURES = (
     "host_length",
     "n_labels",
@@ -115,18 +132,45 @@ def _extractor() -> tldextract.TLDExtract:
     )
 
 
+def _parts(host: str) -> tuple[str, str, str, bool]:
+    """(sottodominio, nome del dominio, suffisso, suffisso privato) in forma ASCII."""
+    if is_ip_address(host):
+        return "", host, "", False
+    r = _extractor()(host)
+    return r.subdomain, r.domain, r.suffix, bool(r.is_private)
+
+
 def split_host(host: str) -> tuple[str, str, str]:
     """Restituisce (sottodominio, nome del dominio, suffisso pubblico)."""
-    if is_ip_address(host):
-        return "", host, ""
-    r = _extractor()(host)
-    return r.subdomain, r.domain, r.suffix
+    sub, domain, suffix, _ = _parts(host)
+    return sub, domain, suffix
 
 
 def registered_domain(host: str) -> str:
     """Dominio registrato (esempio.co.uk), usato per suddividere i dati."""
     _, domain, suffix = split_host(host)
     return f"{domain}.{suffix}" if suffix else domain
+
+
+def is_shared_platform(host: str) -> bool:
+    """Host su una piattaforma condivisa: il nome di dominio non è indicativo."""
+    host = strip_www(host)
+    _, _, _, private = _parts(host)
+    return private or registered_domain(host) in SHARED_HOSTING
+
+
+def to_unicode(label: str) -> str:
+    """Forma leggibile di un'etichetta: "xn--bcher-kva" diventa "bücher".
+
+    Le feature sui caratteri si calcolano su questa forma: le cifre e i
+    trattini della codifica punycode non fanno parte del nome reale.
+    """
+    if not label.startswith("xn--"):
+        return label
+    try:
+        return idna.decode(label)
+    except idna.IDNAError:
+        return label
 
 
 def shannon_entropy(text: str) -> float:
@@ -141,25 +185,28 @@ def extract_host_features(host: str) -> dict[str, float | int | str]:
     """Feature numeriche e categoriche di un host già normalizzato da parse_url."""
     host = strip_www(host)
     ip = is_ip_address(host)
-    subdomain, domain, suffix = split_host(host)
-    labels = host.split(".")
+    subdomain, domain, suffix, _ = _parts(host)
+    ascii_labels = host.split(".")
+    labels = ascii_labels if ip else [to_unicode(label) for label in ascii_labels]
+    name = ".".join(labels)
+    domain_u = domain if ip else to_unicode(domain)
     sub_labels = [s for s in subdomain.split(".") if s]
-    digits = sum(ch.isdigit() for ch in host)
-    runs = _CONSONANT_RUN.findall(domain) if not ip else []
+    digits = sum(ch.isdigit() for ch in name)
+    runs = _CONSONANT_RUN.findall(domain_u) if not ip else []
 
     return {
-        "host_length": len(host),
+        "host_length": len(name),
         "n_labels": len(labels),
         "n_subdomain_labels": len(sub_labels),
-        "domain_label_length": len(domain),
+        "domain_label_length": len(domain_u),
         "longest_label": max(len(label) for label in labels),
-        "n_hyphens": host.count("-"),
+        "n_hyphens": name.count("-"),
         "n_digits": digits,
-        "digit_ratio": digits / len(host),
-        "entropy": shannon_entropy(host),
+        "digit_ratio": digits / len(name),
+        "entropy": shannon_entropy(name),
         "max_consonant_run": max((len(r) for r in runs), default=0),
         "is_ip": int(ip),
-        "is_punycode": int(any(label.startswith("xn--") for label in labels)),
+        "is_punycode": int(any(label.startswith("xn--") for label in ascii_labels)),
         "brand_in_subdomain": int(any(b in subdomain for b in BRANDS)),
         "brand_in_domain_not_exact": int(any(b in domain and domain != b for b in BRANDS)),
         "n_keywords": sum(k in host for k in KEYWORDS),

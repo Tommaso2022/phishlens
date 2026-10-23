@@ -50,6 +50,15 @@ SAFE_TEXT = {
     "n_digits": lambda v: "Nessuna o poche cifre nel nome",
     "n_hyphens": lambda v: "Nessuno o pochi trattini",
     "entropy": lambda v: "Sequenza di caratteri naturale",
+    "n_labels": lambda v: f"Nome composto da poche parti ({_n(v)})",
+    "longest_label": lambda v: "Nessuna parte del nome è insolitamente lunga",
+    "max_consonant_run": lambda v: "Nessuna lunga sequenza di consonanti",
+    "digit_ratio": lambda v: "Poche o nessuna cifra nel nome",
+    "n_keywords": lambda v: "Nessuna parola tipica del phishing",
+    "brand_in_subdomain": lambda v: "Nessun marchio noto nel sottodominio",
+    "brand_in_domain_not_exact": lambda v: "Nessun marchio noto inserito nel nome",
+    "is_punycode": lambda v: "Solo caratteri latini standard",
+    "is_ip": lambda v: "Usa un nome di dominio, non un indirizzo IP",
 }
 
 

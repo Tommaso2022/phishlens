@@ -23,5 +23,6 @@ def synthetic_urls(n: int = 1500, seed: int = 1) -> pd.DataFrame:
     rows.append(("https://www.esempio-legittimo.com", 0))
     rows.append(("http://docs.esempio-legittimo.com/phish", 1))  # dominio presente tra i legittimi
     rows.append(("https://qualcosa.ipfs.io/x", 1))  # piattaforma condivisa
+    rows.append(("https://accesso-banca.web.app/", 1))  # suffisso privato (Firebase)
     rows.append(("https://utente:pw@esempio.test/", 1))  # URL non valido
     return pd.DataFrame(rows, columns=["url", "is_phishing"])

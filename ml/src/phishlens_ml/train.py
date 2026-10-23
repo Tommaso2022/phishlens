@@ -1,4 +1,4 @@
-"""Addestramento e valutazione dei modelli v1, con priorità ai pochi falsi positivi.
+"""Addestramento e valutazione dei modelli sul dominio, con priorità ai pochi falsi positivi.
 
 Uso, dalla radice del repository (dopo phishlens_ml.build):
     uv run python -m phishlens_ml.train
@@ -64,7 +64,12 @@ def threshold_for_fpr(scores_legit: np.ndarray, fpr: float) -> float:
     return float(np.quantile(scores_legit, 1 - fpr, method="higher"))
 
 
-def evaluate(y: np.ndarray, scores: np.ndarray, thresholds: dict[float, float]) -> dict:
+def evaluate(
+    y: np.ndarray,
+    scores: np.ndarray,
+    thresholds: dict[float, float],
+    has_subdomain: np.ndarray | None = None,
+) -> dict:
     result = {
         "roc_auc": round(float(roc_auc_score(y, scores)), 4),
         "pr_auc": round(float(average_precision_score(y, scores)), 4),
@@ -84,6 +89,12 @@ def evaluate(y: np.ndarray, scores: np.ndarray, thresholds: dict[float, float]) 
                 "false_positives": fp,
             }
         )
+        if has_subdomain is not None:
+            legit_sub = (y == 0) & has_subdomain
+            fp_sub = int((flagged & legit_sub).sum())
+            result["operating_points"][-1]["fpr_legit_with_subdomain"] = round(
+                fp_sub / max(int(legit_sub.sum()), 1), 5
+            )
     return result
 
 
@@ -123,6 +134,11 @@ def print_result(name: str, res: dict) -> None:
             f"falsi positivi reali {p['fpr']:.2%} ({p['false_positives']}), "
             f"precisione {p['precision']:.1%}"
         )
+        if "fpr_legit_with_subdomain" in p:
+            print(
+                "      falsi positivi sui legittimi con sottodominio: "
+                f"{p['fpr_legit_with_subdomain']:.2%}"
+            )
 
 
 # ---------------------------------------------------------------- modelli v1
@@ -130,6 +146,7 @@ def print_result(name: str, res: dict) -> None:
 
 def train_v1(hosts: pd.DataFrame) -> tuple[dict, xgb.XGBClassifier, list[str]]:
     parts = {s: hosts[hosts["split"] == s] for s in ("train", "validation", "test")}
+    sub = (parts["test"]["n_subdomain_labels"] > 0).to_numpy()
     vocab = suffix_vocabulary(parts["train"])
     x = {s: matrix(d, vocab) for s, d in parts.items()}
     y = {s: d["is_phishing"].to_numpy() for s, d in parts.items()}
@@ -148,13 +165,13 @@ def train_v1(hosts: pd.DataFrame) -> tuple[dict, xgb.XGBClassifier, list[str]]:
     lr.fit(x["train"], y["train"])
     s_va = lr.predict_proba(x["validation"])[:, 1]
     thr = {f: threshold_for_fpr(s_va[y["validation"] == 0], f) for f in TARGET_FPRS}
-    report["logistic_regression"] = evaluate(y["test"], lr.predict_proba(x["test"])[:, 1], thr)
+    report["logistic_regression"] = evaluate(y["test"], lr.predict_proba(x["test"])[:, 1], thr, sub)
     print_result("Logistic Regression (dominio)", report["logistic_regression"])
 
     model = fit_xgboost(x["train"], y["train"], x["validation"], y["validation"])
     s_va = model.predict_proba(x["validation"])[:, 1]
     thr = {f: threshold_for_fpr(s_va[y["validation"] == 0], f) for f in TARGET_FPRS}
-    report["xgboost"] = evaluate(y["test"], model.predict_proba(x["test"])[:, 1], thr)
+    report["xgboost"] = evaluate(y["test"], model.predict_proba(x["test"])[:, 1], thr, sub)
     report["xgboost"]["best_iteration"] = int(model.best_iteration)
     report["xgboost"]["shap_mean_abs"] = mean_abs_shap(model.get_booster(), x["test"])
     print_result("XGBoost (dominio)", report["xgboost"])
@@ -219,16 +236,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--hosts", type=Path, default=DATA_DIR / "processed" / "hosts.parquet")
     parser.add_argument("--urls", type=Path, default=DATA_DIR / "processed" / "phiusiil.parquet")
     parser.add_argument("--out", type=Path, default=ARTIFACTS)
+    parser.add_argument("--version", default="v1.1", help="nome della versione del modello")
     args = parser.parse_args(argv)
 
     report, model, vocab = train_v1(pd.read_parquet(args.hosts))
     report["naive_full_url"] = naive_experiment(pd.read_parquet(args.urls))
     report["created"] = datetime.now(UTC).isoformat(timespec="seconds")
+    report["version"] = v = args.version
 
     args.out.mkdir(parents=True, exist_ok=True)
-    model.save_model(args.out / "model-v1.json")
-    (args.out / "suffix-vocab-v1.json").write_text(json.dumps(vocab, indent=1) + "\n")
-    (args.out / "report-v1.json").write_text(json.dumps(report, indent=2) + "\n")
+    model.save_model(args.out / f"model-{v}.json")
+    (args.out / f"suffix-vocab-{v}.json").write_text(json.dumps(vocab, indent=1) + "\n")
+    (args.out / f"report-{v}.json").write_text(json.dumps(report, indent=2) + "\n")
     print(f"\nModello, vocabolario e report salvati in {args.out}")
     return 0
 

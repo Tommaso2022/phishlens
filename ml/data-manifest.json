@@ -19,5 +19,13 @@
     "url": "https://tranco-list.eu/top-1m.csv.zip",
     "tranco_list_id": "56Z8N",
     "citation": "Le Pochat et al., Tranco (NDSS 2019), https://tranco-list.eu/"
+  },
+  "tranco-top-1m-subdomains.zip": {
+    "file": "tranco-top-1m-subdomains.zip",
+    "sha256": "7953166315607a0305f4762ec5d62f862de7fcbba1f3df4c81a911ada158b1c9",
+    "recorded": "2026-10-23",
+    "url": "https://tranco-list.eu/top-1m-incl-subdomains.csv.zip",
+    "tranco_list_id": "ZJ83G",
+    "citation": "Le Pochat et al., Tranco: A Research-Oriented Top Sites Ranking (NDSS 2019)"
   }
 }
