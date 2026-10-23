@@ -218,3 +218,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Dati e modelli addestrati: restano solo in locale (vedi ml/README.md)
+ml/data/
+ml/artifacts/

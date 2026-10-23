@@ -14,6 +14,7 @@ members = [
     "backend",
     "worker",
     "fetcher",
+    "ml",
 ]
 
 [dependency-groups]
@@ -36,3 +37,7 @@ select = ["E", "F", "W", "I", "B", "UP", "S", "PT"]
 
 [tool.bandit]
 exclude_dirs = [".venv", "tests"]
+
+[tool.pytest.ini_options]
+addopts = "--import-mode=importlib"
+testpaths = ["tests", "core/tests", "ml/tests"]

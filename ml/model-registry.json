@@ -1,0 +1,73 @@
+{
+  "v1.1": {
+    "created": "2026-10-23",
+    "files": {
+      "model-v1.1.json": "d02944fdd26091c5c0c522ec0cba8411f4ecedd3c071823b3de9b21d1f28cc9a",
+      "suffix-vocab-v1.1.json": "cb92e39db3bfbc1178f8449cb90da52454900d6fe334a037f0b936cf3daa0d86"
+    },
+    "model_bytes": 1573708,
+    "thresholds": {
+      "0.001": 0.905602,
+      "0.01": 0.680225
+    },
+    "metrics_test": {
+      "roc_auc": 0.7853,
+      "pr_auc": 0.6433,
+      "operating_points": [
+        {
+          "target_fpr": 0.001,
+          "threshold": 0.905602,
+          "fpr": 0.00084,
+          "recall": 0.1722,
+          "precision": 0.9853,
+          "false_positives": 21,
+          "fpr_legit_with_subdomain": 0.00217
+        },
+        {
+          "target_fpr": 0.01,
+          "threshold": 0.680225,
+          "fpr": 0.00864,
+          "recall": 0.273,
+          "precision": 0.9115,
+          "false_positives": 217,
+          "fpr_legit_with_subdomain": 0.02619
+        }
+      ]
+    },
+    "data": {
+      "test": {
+        "phiusiil": {
+          "legittimi": 20231,
+          "phishing": 8190
+        },
+        "tranco": {
+          "legittimi": 4881
+        }
+      },
+      "train": {
+        "phiusiil": {
+          "legittimi": 94335,
+          "phishing": 41115
+        },
+        "tranco": {
+          "legittimi": 20879
+        }
+      },
+      "validation": {
+        "phiusiil": {
+          "legittimi": 20174,
+          "phishing": 11001
+        },
+        "tranco": {
+          "legittimi": 4212
+        }
+      }
+    },
+    "datasets": {
+      "phiusiil.zip": "0a639fd03aea6308c5b1c10c92aa23c2ce1505447a9137271865cd0badc9a59a",
+      "phiusiil.csv": "a236549cd369cd80bd478ff8e1779cbf44c58d5c3f79f7a51a1adbed7d06d1c6",
+      "tranco-top-1m.zip": "33103ca183aa996969250cbaab8bc24ca7c02eaf249f6608f3ae0a7b8d784099",
+      "tranco-top-1m-subdomains.zip": "7953166315607a0305f4762ec5d62f862de7fcbba1f3df4c81a911ada158b1c9"
+    }
+  }
+}
