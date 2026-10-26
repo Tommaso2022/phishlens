@@ -97,14 +97,20 @@ services:
       context: .
       args:
         SERVICE: backend
-    command: ["uvicorn", "phishlens_backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    command: ["uvicorn", "--factory", "phishlens_backend.main:create_app", "--host", "0.0.0.0", "--port", "8000"]
     environment:
       PHISHLENS_ENV: development
       PHISHLENS_DATABASE_URL: postgresql+psycopg://phishlens_app:${PHISHLENS_APP_DB_PASSWORD}@db:5432/phishlens
+      PHISHLENS_REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      PHISHLENS_BASE_URL: http://127.0.0.1:8000
+      PHISHLENS_SMTP_HOST: mailpit
+      PHISHLENS_SMTP_PORT: "1025"
     ports:
       - "127.0.0.1:8000:8000"
     networks: [data, edge]
     depends_on:
+      mailpit:
+        condition: service_started
       migrate:
         condition: service_completed_successfully
       redis:
@@ -145,6 +151,17 @@ services:
       interval: 15s
       timeout: 5s
       retries: 3
+
+  mailpit:
+    # Solo sviluppo: riceve le email inviate dal backend e le mostra su
+    # http://127.0.0.1:8025 senza inoltrarle a nessuno. Non esiste in produzione.
+    image: axllent/mailpit:v1.32.0
+    ports:
+      - "127.0.0.1:8025:8025"
+    networks: [data, edge]
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
 
   db-test:
     image: postgres:17-alpine

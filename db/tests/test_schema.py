@@ -11,8 +11,6 @@ from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.orm import Session
 
-from .conftest import _alembic
-
 TABLES = {"users", "sessions", "recovery_codes", "email_tokens", "analyses", "audit_events"}
 
 
@@ -125,8 +123,8 @@ def test_statement_timeout(database):
     engine.dispose()
 
 
-def test_migration_downgrade_and_upgrade(database):
-    cfg = _alembic(database["owner"])
+def test_migration_downgrade_and_upgrade(database, alembic_for):
+    cfg = alembic_for(database["owner"])
     command.downgrade(cfg, "base")
     assert not set(inspect(create_engine(database["owner"])).get_table_names()) & TABLES
     command.upgrade(cfg, "head")

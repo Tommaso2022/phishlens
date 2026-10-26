@@ -1,4 +1,5 @@
-"""Database di test: ogni sessione di test crea un database nuovo e lo elimina alla fine.
+"""Fixture condivisi. Database di test: ogni sessione di test crea un database nuovo
+e lo elimina alla fine.
 
 Variabili d'ambiente:
   PHISHLENS_TEST_ADMIN_URL  URL di un utente amministratore dell'istanza di test,
@@ -35,7 +36,7 @@ def _admin_url():
     return make_url(url)
 
 
-def _alembic(url: str) -> Config:
+def alembic_config(url: str) -> Config:
     os.environ["PHISHLENS_MIGRATION_DATABASE_URL"] = url
     return migrate.config()
 
@@ -60,13 +61,19 @@ def database():
     owner_url = admin.set(username=OWNER, password=OWNER_PW, database=name)
     app_url = admin.set(username=APP, password=APP_PW, database=name)
     owner_str = owner_url.render_as_string(hide_password=False)
-    command.upgrade(_alembic(owner_str), "head")
+    command.upgrade(alembic_config(owner_str), "head")
     yield {"owner": owner_str, "app": app_url.render_as_string(hide_password=False)}
 
     admin_engine.dispose()  # connessione nuova: quella iniziale può essere scaduta
     with admin_engine.connect() as c:
         c.execute(text(f"DROP DATABASE {name} WITH (FORCE)"))
     admin_engine.dispose()
+
+
+@pytest.fixture(scope="session")
+def alembic_for():
+    """Configurazione Alembic per un URL (usata dai test delle migrazioni)."""
+    return alembic_config
 
 
 @pytest.fixture
