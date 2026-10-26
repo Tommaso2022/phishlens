@@ -32,7 +32,22 @@ jobs:
   checks:
     name: Test e pre-commit
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
+    services:
+      # Istanza usa e getta per i test del database (db/tests/conftest.py).
+      # La password vale solo dentro questo job: il container non è raggiungibile da fuori.
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: solo-per-ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -46,6 +61,9 @@ jobs:
         run: uv sync --frozen --all-packages
 
       - name: Test
+        env:
+          PHISHLENS_TEST_ADMIN_URL: postgresql+psycopg://postgres:solo-per-ci@localhost:5432/postgres
+          PHISHLENS_TEST_ALLOW_ANY_CLUSTER: "1"
         run: uv run pytest -q
 
       - name: Pre-commit su tutti i file

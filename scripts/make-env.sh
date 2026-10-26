@@ -12,5 +12,7 @@ gen() { python3 -c 'import secrets; print(secrets.token_urlsafe(32))'; }
   echo "# Generato da scripts/make-env.sh. Non committare."
   echo "POSTGRES_PASSWORD=$(gen)"
   echo "REDIS_PASSWORD=$(gen)"
+  echo "PHISHLENS_OWNER_DB_PASSWORD=$(gen)"
+  echo "PHISHLENS_APP_DB_PASSWORD=$(gen)"
 } > .env
 echo "Creato .env: solo il tuo utente può leggerlo."

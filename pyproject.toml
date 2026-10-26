@@ -15,6 +15,7 @@ members = [
     "worker",
     "fetcher",
     "ml",
+    "db",
 ]
 
 [dependency-groups]
@@ -33,11 +34,11 @@ line-length = 100
 select = ["E", "F", "W", "I", "B", "UP", "S", "PT"]
 
 [tool.ruff.lint.per-file-ignores]
-"**/tests/**" = ["S101"]
+"**/tests/**" = ["S101", "S105", "S106"]
 
 [tool.bandit]
 exclude_dirs = [".venv", "tests"]
 
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib"
-testpaths = ["tests", "core/tests", "ml/tests"]
+testpaths = ["tests", "core/tests", "db/tests", "ml/tests"]

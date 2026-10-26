@@ -6,6 +6,12 @@
 #   edge            Backend: porta pubblicata solo su 127.0.0.1; uscita verso HIBP (F12).
 #   egress-worker   Worker -> API esterne (F9).
 #   egress-fetcher  Fetcher -> siti analizzati (F8). Il fetcher NON è sulla rete "data".
+#   test            Solo il database dei test (profilo "test"), pubblicato su 127.0.0.1:55432.
+#
+# Database (docs/threat-model.md, riga T-03): tre utenti con privilegi diversi.
+#   phishlens        amministratore; non usato dall'applicazione
+#   phishlens_owner  proprietario dello schema: lo usa solo il servizio "migrate"
+#   phishlens_app    backend e worker: legge e scrive dati, non modifica le tabelle
 #
 # Le porte pubblicate sono sempre legate a 127.0.0.1: altrimenti sarebbero
 # raggiungibili da chiunque sulla stessa rete Wi-Fi (threat model, I-04).
@@ -30,8 +36,11 @@ services:
       POSTGRES_DB: phishlens
       POSTGRES_USER: phishlens
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?manca POSTGRES_PASSWORD nel file .env}
+      PHISHLENS_OWNER_DB_PASSWORD: ${PHISHLENS_OWNER_DB_PASSWORD:?manca PHISHLENS_OWNER_DB_PASSWORD nel file .env}
+      PHISHLENS_APP_DB_PASSWORD: ${PHISHLENS_APP_DB_PASSWORD:?manca PHISHLENS_APP_DB_PASSWORD nel file .env}
     volumes:
       - db-data:/var/lib/postgresql/data
+      - ./db/initdb:/docker-entrypoint-initdb.d:ro
     networks: [data]
     security_opt:
       - no-new-privileges:true
@@ -64,6 +73,23 @@ services:
       retries: 5
     restart: unless-stopped
 
+  migrate:
+    <<: *hardened
+    image: phishlens/backend:dev
+    build:
+      context: .
+      args:
+        SERVICE: backend
+    command: ["python", "-m", "phishlens_db.migrate"]
+    restart: "no"
+    environment:
+      PHISHLENS_ENV: development
+      PHISHLENS_MIGRATION_DATABASE_URL: postgresql+psycopg://phishlens_owner:${PHISHLENS_OWNER_DB_PASSWORD}@db:5432/phishlens
+    networks: [data]
+    depends_on:
+      db:
+        condition: service_healthy
+
   backend:
     <<: *hardened
     image: phishlens/backend:dev
@@ -72,12 +98,15 @@ services:
       args:
         SERVICE: backend
     command: ["uvicorn", "phishlens_backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      PHISHLENS_ENV: development
+      PHISHLENS_DATABASE_URL: postgresql+psycopg://phishlens_app:${PHISHLENS_APP_DB_PASSWORD}@db:5432/phishlens
     ports:
       - "127.0.0.1:8000:8000"
     networks: [data, edge]
     depends_on:
-      db:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
     healthcheck:
@@ -94,6 +123,9 @@ services:
       args:
         SERVICE: worker
     command: ["python", "-m", "phishlens_worker.main"]
+    environment:
+      PHISHLENS_ENV: development
+      PHISHLENS_DATABASE_URL: postgresql+psycopg://phishlens_app:${PHISHLENS_APP_DB_PASSWORD}@db:5432/phishlens
     networks: [data, fetch, egress-worker]
     depends_on:
       redis:
@@ -114,6 +146,31 @@ services:
       timeout: 5s
       retries: 3
 
+  db-test:
+    image: postgres:17-alpine
+    profiles: ["test"]
+    # cluster_name dichiara l'istanza come "di test": i fixture si rifiutano di
+    # creare ruoli e database su qualsiasi altra istanza (db/tests/conftest.py).
+    command: ["postgres", "-c", "cluster_name=phishlens-test"]
+    environment:
+      POSTGRES_DB: phishlens
+      POSTGRES_USER: phishlens
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?manca POSTGRES_PASSWORD nel file .env}
+      PHISHLENS_OWNER_DB_PASSWORD: ${PHISHLENS_OWNER_DB_PASSWORD:?manca PHISHLENS_OWNER_DB_PASSWORD}
+      PHISHLENS_APP_DB_PASSWORD: ${PHISHLENS_APP_DB_PASSWORD:?manca PHISHLENS_APP_DB_PASSWORD}
+    volumes:
+      - ./db/initdb:/docker-entrypoint-initdb.d:ro
+    tmpfs:
+      - /var/lib/postgresql/data  # dati in memoria: spariscono a ogni riavvio
+    ports:
+      - "127.0.0.1:55432:5432"
+    networks: [test]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U phishlens -d phishlens"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
 networks:
   data:
     internal: true
@@ -122,6 +179,7 @@ networks:
   edge: {}
   egress-worker: {}
   egress-fetcher: {}
+  test: {}
 
 volumes:
   db-data: {}

@@ -12,7 +12,7 @@ import yaml
 ROOT = Path(__file__).parents[1]
 COMPOSE = yaml.safe_load((ROOT / "compose.yaml").read_text())
 SERVICES = COMPOSE["services"]
-PYTHON_SERVICES = ["backend", "worker", "fetcher"]
+PYTHON_SERVICES = ["migrate", "backend", "worker", "fetcher"]
 
 
 def _published(service: dict) -> list[str]:
@@ -49,3 +49,25 @@ def test_dockerfile_runs_as_non_root():
     lines = (ROOT / "Dockerfile").read_text().splitlines()
     last_user = [line for line in lines if line.startswith("USER ")][-1]
     assert last_user.split()[1].split(":")[0] not in {"0", "root"}
+
+
+def _env_text(service: dict) -> str:
+    env = service.get("environment", {})
+    return " ".join(f"{k}={v}" for k, v in env.items())
+
+
+def test_only_migrate_gets_schema_owner_credentials():
+    """Backend e worker usano l'utente applicativo, non il proprietario dello schema."""
+    for name, service in SERVICES.items():
+        if name in {"migrate", "db", "db-test"}:
+            continue
+        assert "OWNER" not in _env_text(service), f"{name} riceve le credenziali del proprietario"
+
+
+def test_app_services_use_app_database_user():
+    for name in ("backend", "worker"):
+        assert "phishlens_app:" in _env_text(SERVICES[name])
+
+
+def test_fetcher_has_no_database_credentials():
+    assert "DATABASE" not in _env_text(SERVICES["fetcher"])
