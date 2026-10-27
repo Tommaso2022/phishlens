@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     smtp_port: int = 1025
     mail_from: str = "PhishLens <no-reply@phishlens.invalid>"
 
+    totp_key: SecretStr  # 32 byte in base64: cifra i segreti TOTP (fuori dal database)
+    cookie_secure: bool = True  # False solo in sviluppo su http://127.0.0.1
+
     hibp_enabled: bool = True
     verify_token_hours: int = Field(default=24, ge=1, le=72)
     register_per_ip_per_day: int = Field(default=5, ge=1)

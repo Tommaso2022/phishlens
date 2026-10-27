@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
-from dataclasses import dataclass
+import time
+from collections.abc import Callable, Iterator
+from dataclasses import dataclass, field
 from typing import Annotated
 
 import redis
@@ -15,6 +16,8 @@ from phishlens_backend.config import Settings
 from phishlens_backend.mailer import Mailer, SmtpMailer
 from phishlens_backend.ratelimit import RateLimiter
 from phishlens_backend.security.breach import BreachChecker, DisabledBreachChecker
+from phishlens_backend.security.throttle import LoginThrottle
+from phishlens_backend.security.totp import SecretBox
 
 
 @dataclass
@@ -24,6 +27,9 @@ class Services:
     limiter: RateLimiter
     mailer: Mailer
     breach: BreachChecker | DisabledBreachChecker
+    throttle: LoginThrottle
+    box: SecretBox
+    clock: Callable[[], float] = field(default=time.time)
 
     @classmethod
     def from_settings(cls, settings: Settings) -> Services:
@@ -35,6 +41,8 @@ class Services:
             limiter=RateLimiter(client),
             mailer=SmtpMailer(settings.smtp_host, settings.smtp_port, settings.mail_from),
             breach=BreachChecker() if settings.hibp_enabled else DisabledBreachChecker(),
+            throttle=LoginThrottle(client),
+            box=SecretBox(settings.totp_key.get_secret_value()),
         )
 
 

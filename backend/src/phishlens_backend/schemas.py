@@ -31,3 +31,39 @@ class VerifyEmailIn(StrictModel):
 
 class Message(BaseModel):
     detail: str
+
+
+class LoginIn(StrictModel):
+    email: Email
+    password: str = Field(min_length=1, max_length=1024)
+
+
+class LoginOut(BaseModel):
+    next: str  # "totp" oppure "totp_setup"
+
+
+class CodeIn(StrictModel):
+    code: str = Field(min_length=6, max_length=6, pattern=r"^[0-9]{6}$")
+
+
+class RecoveryIn(StrictModel):
+    code: str = Field(min_length=16, max_length=24, pattern=r"^[A-Za-z2-7 -]+$")
+
+
+class TotpSetupOut(BaseModel):
+    secret: str
+    uri: str
+
+
+class TotpConfirmOut(BaseModel):
+    recovery_codes: list[str]
+    detail: str = (
+        "Secondo fattore attivato. Conserva questi codici: non verranno mostrati di nuovo."
+    )
+
+
+class MeOut(BaseModel):
+    email: str
+    totp_enabled: bool
+    recovery_codes_left: int
+    daily_quota: int

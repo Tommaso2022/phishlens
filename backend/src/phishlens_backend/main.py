@@ -10,7 +10,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from phishlens_backend.config import Settings, get_settings
-from phishlens_backend.routers import auth
+from phishlens_backend.routers import auth, login
 from phishlens_backend.services import Services
 
 
@@ -41,6 +41,7 @@ def create_app(settings: Settings | None = None, svc: Services | None = None) ->
     app.state.services = svc or Services.from_settings(settings)
     app.add_exception_handler(RequestValidationError, validation_error)
     app.include_router(auth.router)
+    app.include_router(login.router)
 
     @app.get("/health")
     def health() -> dict[str, str]:

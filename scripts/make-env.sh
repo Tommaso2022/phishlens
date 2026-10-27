@@ -14,5 +14,6 @@ gen() { python3 -c 'import secrets; print(secrets.token_urlsafe(32))'; }
   echo "REDIS_PASSWORD=$(gen)"
   echo "PHISHLENS_OWNER_DB_PASSWORD=$(gen)"
   echo "PHISHLENS_APP_DB_PASSWORD=$(gen)"
+  echo "PHISHLENS_TOTP_KEY=$(python3 -c 'import base64, secrets; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())')"
 } > .env
 echo "Creato .env: solo il tuo utente può leggerlo."

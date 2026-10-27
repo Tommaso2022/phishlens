@@ -71,3 +71,10 @@ def test_app_services_use_app_database_user():
 
 def test_fetcher_has_no_database_credentials():
     assert "DATABASE" not in _env_text(SERVICES["fetcher"])
+
+
+def test_totp_key_only_in_backend():
+    """La chiave che cifra i segreti TOTP arriva solo al backend."""
+    for name, service in SERVICES.items():
+        if name != "backend":
+            assert "TOTP_KEY" not in _env_text(service), f"{name} riceve la chiave TOTP"

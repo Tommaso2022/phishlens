@@ -105,6 +105,10 @@ services:
       PHISHLENS_BASE_URL: http://127.0.0.1:8000
       PHISHLENS_SMTP_HOST: mailpit
       PHISHLENS_SMTP_PORT: "1025"
+      PHISHLENS_TOTP_KEY: ${PHISHLENS_TOTP_KEY:?manca PHISHLENS_TOTP_KEY nel file .env}
+      # Solo sviluppo: su http://127.0.0.1 un cookie Secure non verrebbe rimandato.
+      # In produzione (HTTPS) resta true e il cookie usa il prefisso __Host-.
+      PHISHLENS_COOKIE_SECURE: "false"
     ports:
       - "127.0.0.1:8000:8000"
     networks: [data, edge]
