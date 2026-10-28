@@ -67,3 +67,33 @@ class MeOut(BaseModel):
     totp_enabled: bool
     recovery_codes_left: int
     daily_quota: int
+
+
+class PasswordConfirmIn(StrictModel):
+    password: str = Field(min_length=1, max_length=1024)
+
+
+class ReauthIn(StrictModel):
+    password: str = Field(min_length=1, max_length=1024)
+    totp_code: str = Field(min_length=6, max_length=6, pattern=r"^[0-9]{6}$")
+
+
+class PasswordChangeIn(StrictModel):
+    current_password: str = Field(min_length=1, max_length=1024)
+    new_password: str = Field(min_length=1, max_length=1024)
+    totp_code: str = Field(min_length=6, max_length=6, pattern=r"^[0-9]{6}$")
+    revoke_other_sessions: bool = True
+
+
+class SessionOut(BaseModel):
+    id: str
+    created_at: str
+    last_seen_at: str
+    user_agent: str | None
+    ip_prefix: str | None
+    current: bool
+
+
+class RecoveryCodesOut(BaseModel):
+    recovery_codes: list[str]
+    detail: str = "Nuovi codici generati: quelli precedenti non funzionano più."

@@ -82,8 +82,82 @@ def svc(settings, database):
     engine.dispose()
 
 
+class CsrfClient(TestClient):
+    """Copia il token CSRF dal cookie nell'intestazione, come farà il frontend."""
+
+    def request(self, method, url, **kwargs):
+        token = self.cookies.get("__Host-phishlens_csrf")
+        if token and method.upper() in {"POST", "PUT", "PATCH", "DELETE"}:
+            headers = dict(kwargs.pop("headers", None) or {})
+            headers.setdefault("X-CSRF-Token", token)
+            kwargs["headers"] = headers
+        return super().request(method, url, **kwargs)
+
+
 @pytest.fixture
-def client(settings, svc):
-    # https: i cookie Secure (__Host-) vengono rimandati solo su connessioni cifrate.
-    with TestClient(create_app(settings, svc), base_url="https://testserver") as c:
-        yield c
+def make_client(settings, svc):
+    """Crea client indipendenti (per esempio due dispositivi dello stesso utente)."""
+    app = create_app(settings, svc)
+    clients = []
+
+    def factory():
+        # https: i cookie Secure (__Host-) vengono rimandati solo su connessioni cifrate.
+        c = CsrfClient(app, base_url="https://testserver")
+        clients.append(c)
+        return c
+
+    yield factory
+    for c in clients:
+        c.close()
+
+
+@pytest.fixture
+def client(make_client):
+    return make_client()
+
+
+GOOD_PASSWORD = "cavallo batteria graffetta corretta"
+
+
+@pytest.fixture
+def enroll(svc):
+    """Registra, verifica e attiva il TOTP; restituisce (segreto, codici di recupero)."""
+    import re
+
+    import pyotp
+
+    def _enroll(c, email, password=GOOD_PASSWORD):
+        c.post("/auth/register", json={"email": email, "password": password})
+        token = re.search(r"#token=([\w-]+)", svc.mailer.sent[-1].body).group(1)
+        assert c.post("/auth/verify-email", json={"token": token}).status_code == 200
+        assert c.post("/auth/login", json={"email": email, "password": password}).status_code == 200
+        secret = c.post("/auth/totp/setup").json()["secret"]
+        r = c.post("/auth/totp/confirm", json={"code": pyotp.TOTP(secret).at(int(svc.clock.now))})
+        assert r.status_code == 200
+        svc.clock.now += 30
+        return secret, r.json()["recovery_codes"]
+
+    return _enroll
+
+
+@pytest.fixture
+def totp_code(svc):
+    """Codice TOTP valido all'ora attuale dell'orologio finto; poi avanza di un passo."""
+    import pyotp
+
+    def _code(secret):
+        code = pyotp.TOTP(secret).at(int(svc.clock.now))
+        svc.clock.now += 30
+        return code
+
+    return _code
+
+
+@pytest.fixture
+def login_full(totp_code):
+    def _login(c, email, secret, password=GOOD_PASSWORD):
+        assert c.post("/auth/login", json={"email": email, "password": password}).status_code == 200
+        r = c.post("/auth/login/totp", json={"code": totp_code(secret)})
+        assert r.status_code == 200
+
+    return _login

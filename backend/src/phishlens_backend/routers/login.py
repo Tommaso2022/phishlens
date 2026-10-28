@@ -32,6 +32,8 @@ from phishlens_backend.schemas import (
 from phishlens_backend.security import passwords, totp
 from phishlens_backend.services import DbSession, Services, Svc
 from phishlens_backend.sessions import (
+    ENROLL_TTL,
+    PARTIAL_TTL,
     AnySession,
     Current,
     FullSession,
@@ -80,7 +82,9 @@ def login(data: LoginIn, request: Request, response: Response, db: DbSession, sv
     svc.throttle.success(data.email, ip)
     if passwords.needs_rehash(user.password_hash):
         user.password_hash = passwords.hash_password(data.password)
-    start_session(db, svc, response, request, user, SessionStage.PARTIAL)
+    # Prima configurazione del TOTP: 15 minuti invece di 5 (installare l'app richiede tempo).
+    ttl = PARTIAL_TTL if user.totp_enabled_at else ENROLL_TTL
+    start_session(db, svc, response, request, user, SessionStage.PARTIAL, ttl)
     audit.record(db, "login_password_ok", user_id=user.id, ip_prefix=ip)
     return LoginOut(next="totp" if user.totp_enabled_at else "totp_setup")
 
@@ -112,7 +116,7 @@ def totp_setup(cur: PartialSession, db: DbSession, svc: Svc):
     return TotpSetupOut(secret=secret, uri=totp.provisioning_uri(secret, cur.user.email))
 
 
-def _accept_step(db: Session, user: User, step: int) -> bool:
+def accept_step(db: Session, user: User, step: int) -> bool:
     """Registra il passo usato; False se era già stato usato (codice riutilizzato)."""
     return (
         db.scalar(
@@ -137,7 +141,7 @@ def totp_confirm(
         return _error(status.HTTP_409_CONFLICT, "Nessuna configurazione in corso.")
     secret = svc.box.decrypt(user.totp_secret_encrypted, user.id)
     step = totp.matching_step(secret, data.code, svc.clock())
-    if step is None or not _accept_step(db, user, step):
+    if step is None or not accept_step(db, user, step):
         return _second_factor_failed(db, cur, ip, "totp_conferma_fallita")
 
     user.totp_enabled_at = datetime.now(UTC)
@@ -159,7 +163,7 @@ def login_totp(
         return _error(status.HTTP_409_CONFLICT, "Configura prima il secondo fattore.")
     secret = svc.box.decrypt(user.totp_secret_encrypted, user.id)
     step = totp.matching_step(secret, data.code, svc.clock())
-    if step is None or not _accept_step(db, user, step):
+    if step is None or not accept_step(db, user, step):
         return _second_factor_failed(db, cur, ip, "totp_fallito")
     _promote(db, svc, request, response, cur)
     audit.record(db, "login_ok", user_id=user.id, ip_prefix=ip, details={"fattore": "totp"})

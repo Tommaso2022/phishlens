@@ -10,8 +10,10 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from phishlens_backend.config import Settings, get_settings
-from phishlens_backend.routers import auth, login
+from phishlens_backend.routers import account, auth, login
+from phishlens_backend.security.csrf import CsrfMiddleware
 from phishlens_backend.services import Services
+from phishlens_backend.sessions import cookie_name
 
 
 async def validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
@@ -39,9 +41,15 @@ def create_app(settings: Settings | None = None, svc: Services | None = None) ->
         openapi_url="/openapi.json" if docs else None,
     )
     app.state.services = svc or Services.from_settings(settings)
+    app.add_middleware(
+        CsrfMiddleware,
+        allowed_origin=settings.base_url,
+        session_cookie=cookie_name(app.state.services),
+    )
     app.add_exception_handler(RequestValidationError, validation_error)
     app.include_router(auth.router)
     app.include_router(login.router)
+    app.include_router(account.router)
 
     @app.get("/health")
     def health() -> dict[str, str]:

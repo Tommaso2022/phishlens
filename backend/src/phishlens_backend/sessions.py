@@ -1,9 +1,10 @@
 """Sessioni lato server (ADR-002; docs/authentication.md, sezione 7).
 
 Il browser riceve un token casuale in un cookie HttpOnly, Secure, SameSite=Lax;
-nel database c'è solo il suo hash. Una sessione "parziale" (solo password)
-vale 5 minuti e serve solo per il secondo fattore; quella "completa" scade
-dopo 30 minuti di inattività o 12 ore dal login.
+nel database c'è solo il suo hash. Una sessione "parziale" (solo password) serve
+solo per il secondo fattore: vale 5 minuti, oppure 15 durante la prima
+configurazione del TOTP. Quella "completa" scade dopo 30 minuti di inattività
+o 12 ore dal login.
 """
 
 from __future__ import annotations
@@ -18,10 +19,13 @@ from phishlens_db.models import SessionStage, User, UserSession
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from phishlens_backend.net import ip_prefix
+from phishlens_backend.security.csrf import csrf_token_for
 from phishlens_backend.security.tokens import hash_token, new_token
 from phishlens_backend.services import DbSession, Services, Svc
 
 PARTIAL_TTL = timedelta(minutes=5)
+ENROLL_TTL = timedelta(minutes=15)  # prima configurazione del TOTP
 IDLE_TIMEOUT = timedelta(minutes=30)
 ABSOLUTE_TTL = timedelta(hours=12)
 MAX_FULL_SESSIONS = 5
@@ -34,6 +38,10 @@ def cookie_name(svc: Services) -> str:
     return "__Host-phishlens_session" if svc.settings.cookie_secure else "phishlens_session"
 
 
+def csrf_cookie_name(svc: Services) -> str:
+    return "__Host-phishlens_csrf" if svc.settings.cookie_secure else "phishlens_csrf"
+
+
 def start_session(
     db: Session,
     svc: Services,
@@ -41,8 +49,11 @@ def start_session(
     request: Request,
     user: User,
     stage: SessionStage,
+    ttl: timedelta | None = None,
 ) -> UserSession:
     now = datetime.now(UTC)
+    if ttl is None:
+        ttl = PARTIAL_TTL if stage == SessionStage.PARTIAL else ABSOLUTE_TTL
     if stage == SessionStage.FULL:
         _trim_full_sessions(db, user.id)
     token, digest = new_token()
@@ -50,9 +61,11 @@ def start_session(
         token_hash=digest,
         user_id=user.id,
         stage=stage,
+        created_at=now,
         last_seen_at=now,
-        expires_at=now + (PARTIAL_TTL if stage == SessionStage.PARTIAL else ABSOLUTE_TTL),
+        expires_at=now + ttl,
         user_agent=(request.headers.get("user-agent") or "")[:200] or None,
+        ip_prefix=ip_prefix(request),
     )
     db.add(sess)
     db.flush()
@@ -63,7 +76,17 @@ def start_session(
         secure=svc.settings.cookie_secure,
         samesite="lax",
         path="/",
-        max_age=int((sess.expires_at - now).total_seconds()),
+        max_age=int(ttl.total_seconds()),
+    )
+    # Cookie leggibile dal frontend, che lo copia nell'intestazione X-CSRF-Token.
+    response.set_cookie(
+        csrf_cookie_name(svc),
+        csrf_token_for(token),
+        httponly=False,
+        secure=svc.settings.cookie_secure,
+        samesite="strict",
+        path="/",
+        max_age=int(ttl.total_seconds()),
     )
     return sess
 
@@ -84,6 +107,9 @@ def end_session(db: Session, svc: Services, response: Response, sess: UserSessio
     db.execute(delete(UserSession).where(UserSession.id == sess.id))
     response.delete_cookie(
         cookie_name(svc), path="/", secure=svc.settings.cookie_secure, httponly=True, samesite="lax"
+    )
+    response.delete_cookie(
+        csrf_cookie_name(svc), path="/", secure=svc.settings.cookie_secure, samesite="strict"
     )
 
 
