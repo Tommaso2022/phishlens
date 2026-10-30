@@ -133,7 +133,10 @@ def _load(request: Request, db: Session, svc: Services) -> Current:
     )
     user = db.get(User, sess.user_id)
     if expired or user is None or not user.is_active:
-        db.execute(delete(UserSession).where(UserSession.id == sess.id))
+        # Transazione separata: l'eccezione qui sotto annulla quella della richiesta,
+        # e con lei la cancellazione (sarebbe rimasta una riga morta nel database).
+        with svc.sessions() as cleanup, cleanup.begin():
+            cleanup.execute(delete(UserSession).where(UserSession.id == sess.id))
         raise unauthorized
     if now - sess.last_seen_at > TOUCH_EVERY:
         sess.last_seen_at = now

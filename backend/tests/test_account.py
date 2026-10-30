@@ -191,3 +191,45 @@ def test_session_records_reduced_ip(client, svc, enroll):
     s = client.get("/me/sessions").json()[0]
     assert s["ip_prefix"] in (None, "sconosciuto") or s["ip_prefix"].endswith(("/24", "/48"))
     assert datetime.fromisoformat(s["created_at"]) <= datetime.now(UTC) + timedelta(seconds=5)
+
+
+# ------------------------------------------------------------- scadenze
+
+
+def _shift_session(svc, email, **fields):
+    """Sposta indietro nel tempo i campi di tutte le sessioni complete di un utente."""
+    with svc.sessions() as db, db.begin():
+        user = db.scalar(select(User).where(User.email == email))
+        sessions = db.scalars(
+            select(UserSession).where(UserSession.user_id == user.id, UserSession.stage == "full")
+        ).all()
+        for sess in sessions:
+            for name, delta in fields.items():
+                setattr(sess, name, datetime.now(UTC) - delta)
+        return [sess.id for sess in sessions]
+
+
+def _remaining(svc, session_ids):
+    with svc.sessions() as db:
+        return sum(db.get(UserSession, sid) is not None for sid in session_ids)
+
+
+def test_session_idle_timeout(client, svc, enroll, login_full):
+    """30 minuti di inattività chiudono la sessione completa (ASVS 7.3.1)."""
+    secret, _ = enroll(client, "inattivo@example.com")
+    login_full(client, "inattivo@example.com", secret)
+    _shift_session(svc, "inattivo@example.com", last_seen_at=timedelta(minutes=29))
+    assert client.get("/me").status_code == 200  # 29 minuti: ancora valida, e si rinnova
+    sids = _shift_session(svc, "inattivo@example.com", last_seen_at=timedelta(minutes=31))
+    assert client.get("/me").status_code == 401
+    # La sessione usata dal client è cancellata davvero, non solo rifiutata.
+    assert _remaining(svc, sids) == len(sids) - 1
+
+
+def test_session_absolute_timeout(client, svc, enroll, login_full):
+    """Dopo 12 ore la sessione scade anche se usata di continuo (ASVS 7.3.2)."""
+    secret, _ = enroll(client, "assoluto@example.com")
+    login_full(client, "assoluto@example.com", secret)
+    sids = _shift_session(svc, "assoluto@example.com", expires_at=timedelta(seconds=1))
+    assert client.get("/me").status_code == 401
+    assert _remaining(svc, sids) == len(sids) - 1
